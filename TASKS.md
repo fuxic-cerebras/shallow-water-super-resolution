@@ -48,9 +48,9 @@ so the diagnostics are not vacuously green.
 | D-03 | ready-for-review | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
 | D-04 | ready-for-review | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
 | V-01 | ready-for-review | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
-| D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
+| D-05 | ready-for-review | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
 | D-06 | deferred | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
-| V-02 | unclaimed | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
+| V-02 | ready-for-review | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
 
 G2 evidence so far: D-01 to D-04 are `ready-for-review`. Both smoke pairs generate with
 zero checksum mismatches, disjoint splits, bit-identical within-pair saved times, and mass
@@ -60,6 +60,27 @@ drift 1.07e-14, minimum depth 98.669 m, 1.41 GiB on disk under gzip. That run is
 validation, NOT the D-05 release: its manifest records a `-dirty` commit, so it is not
 reproducible from a commit alone, and D-05 still depends on D-04 normalization and the
 V-01 independent audit.
+
+G3 evidence (primary only; backup deferred): the full 48-trajectory primary release is
+generated with clean provenance at commit `c82ce16` and passes all 12 gates of
+`python -m swe_sr.data.validate`, including 384 array checksums recomputed from the arrays
+and a train-only normalization recomputed and matched. Worst relative mass drift 1.067e-14,
+minimum total depth 98.6689 m, 197 frames over 34.86 h, splits disjoint across 48 unique
+IDs.
+
+OUTSTANDING, needs one owner action: the release currently sits at
+`data/staging/{raw,processed}/swe_gaussian_32x128_v1/` rather than the canonical
+`data/{raw,processed}/`. An earlier development run with `-dirty` provenance occupies the
+canonical path and removing it requires approval, and the generator refuses to overwrite a
+release by design. To promote:
+
+    rm -rf data/raw/swe_gaussian_32x128_v1 data/processed/swe_gaussian_32x128_v1
+    mv data/staging/raw/swe_gaussian_32x128_v1 data/raw/
+    mv data/staging/processed/swe_gaussian_32x128_v1 data/processed/
+    rmdir data/staging/raw data/staging/processed data/staging
+
+Nothing downstream is blocked: `docs/AGENT_WORKFLOW.md` has ML working against synthetic
+fixtures until data pass G3, and training is gated on G6 authorization regardless.
 
 G2 acceptance: both smoke pairs independently integrate matching ICs over matching
 domains and exact within-pair saved times. G3 acceptance: immutable manifests pass the
