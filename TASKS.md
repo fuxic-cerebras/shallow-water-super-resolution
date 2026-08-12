@@ -104,10 +104,29 @@ what makes any reported gain over bicubic attributable to the learned residual.
 | M-04 | ready-for-review | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
 | V-03 | ready-for-review | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
 | T-01 | ready-for-review | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
-| T-02 | unclaimed | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
+| T-02 | ready-for-review | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
 | I-02 | unclaimed | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |
 | T-03 | unclaimed | ML | I-02 | Run full primary U-Net and EDSR training and loss curves | G6 |
+
+G5 evidence (measured on Slurm jobs 295533 and 295561, node cpu-dy-x48-m7a-3, 16 threads,
+BF16 on AMD EPYC 9R14): both pilots ran 1,970 steps over 10 epochs with validation loss
+falling monotonically. EDSR 0.1134 s/step, 515 MB peak RSS, best validation 0.306881. U-Net
+0.1979 s/step, 813 MB, best 0.302805. Measured 4.6x speedup over 2 local threads. Projected
+full 30,000-step runs: EDSR 0.95 h, U-Net 1.65 h, 2.59 h combined, well inside the 8 h per
+model envelope in `docs/EXPERIMENT_PLAN.md`.
+
+BLOCKING FINDING before G6, a design consequence rather than a defect. Bicubic scores 1.019
+normalized macro MSE on the validation split, which is what predicting the channel mean
+scores. Stratified by lead time, bicubic MSE grows monotonically: 0.008 at 2.0 h, 0.124 at
+8.7 h, 0.305 at 15.4 h, 0.563 at 22.1 h, 1.082 at 32.2 h. The independent coarse and fine
+integrations that D002 requires progressively decorrelate, so at late times the coarse state
+no longer determines the fine realization and the mapping is not recoverable in principle.
+Both models reach about 0.30, a real 3.3x gain over bicubic, but part of that is likely
+learning to hedge toward the conditional mean where the target is unpredictable. Extending
+trajectories to 4,992 steps (D017) added exactly the frames where the pair is least related.
+Awaiting an owner decision -- restrict the time range, report stratified by lead time, or
+revisit D002/D003 -- before full training proceeds.
 
 Backup 64->256 training is a later scaling task. It uses separate configs, checkpoints,
 normalization, and a newly approved compute budget.
