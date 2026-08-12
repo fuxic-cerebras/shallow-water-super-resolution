@@ -31,6 +31,7 @@ from swe_sr.data.manifest import (
     coordinate_hash,
     git_commit,
 )
+from swe_sr.data.normalization import fit_from_manifest
 from swe_sr.data.registry import (
     InitialConditionRegistry,
     build_registry,
@@ -231,7 +232,23 @@ def generate_dataset(
         trajectories=records,
     )
     manifest.write(raw_dir / "manifest.json")
-    return manifest
+
+    # The processed layer from docs/DATASET.md: the same arrays, plus the train-only
+    # normalization the loader needs. Fitted after generation because it must read the train
+    # split's fine fields, and fitted on destaggered fields so the statistics match what
+    # models actually consume (D011).
+    processed_dir = root / "processed" / config.dataset_id
+    normalization = fit_from_manifest(manifest, raw_dir, split="train")
+    normalization.write(processed_dir / "normalization.json")
+
+    processed_manifest = dataclasses.replace(manifest, normalization=normalization.to_dict())
+    processed_manifest.write(processed_dir / "manifest.json")
+
+    if verbose:
+        print("\nnormalization (train split, fine grid, destaggered):")
+        for name, stats in zip(("eta", "u", "v"), normalization.channels, strict=True):
+            print(f"    {name:<4} mean={stats.mean:+.6e}  std={stats.std:.6e}")
+    return processed_manifest
 
 
 def main(argv: list[str] | None = None) -> int:

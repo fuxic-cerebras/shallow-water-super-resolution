@@ -115,3 +115,11 @@ the results can claim.
   so wide bumps cannot be placed off-center and the realized center distribution is
   not uniform over the domain. Record the realized `sigma/dx` and center
   distributions in the IC registry so the coverage is auditable.
+- **No cheap data augmentation is available for this system.** D018 measured that
+  reflections and the transpose are not symmetries of a rotating beta-plane, so the
+  augmentation this specification assumed does not exist. The effective training set is
+  therefore roughly 32 trajectories times about 33 decorrelated states, on the order of a
+  thousand independent samples, and the only levers for more are additional initial
+  conditions or longer trajectories. Whether reflection augmentation helps anyway, teaching
+  a useful spatial prior at the cost of a false equivariance, is an open empirical question
+  for an ablation rather than something to assume.

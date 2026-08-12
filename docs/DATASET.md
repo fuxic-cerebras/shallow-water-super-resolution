@@ -94,10 +94,16 @@ Use full-frame pairs: 32 -> 128 for the primary study and 64 -> 256 for a later
 separate training run. Endpoint-aligned interpolation has an unambiguous physical
 coordinate map; naive index-aligned patches do not.
 
-- Use only symmetry-preserving augmentation: horizontal/vertical reflection with
-  the sign of the corresponding velocity component changed.
-- A transpose augmentation swaps axes and also swaps `u` with `v`; use it only after
-  a unit test verifies the transformation.
+- Horizontal/vertical reflection with the sign of the corresponding velocity component
+  changed, and a transpose that swaps axes and also swaps `u` with `v`. The unit tests
+  required before using the transpose are in `tests/data/test_processing.py`.
+- **These are not symmetries of this solver, and are disabled by default.** See D018: with
+  the rotating beta-plane every one of them differs from the true evolution by roughly 0.9
+  in relative amplitude, because rotation is chiral and reflections would require
+  `f -> -f`. Reflections stay broken even without rotation, at 0.048, because the C-grid
+  staggering places `u` on east faces. They remain geometrically exact on the destaggered
+  cell-centered fields, so they are available behind config for a later ablation, but
+  enabling them is an empirical question rather than a free win.
 - Do not use arbitrary image rotations, color transforms, independent channel
   scaling, or naive x4 index crops.
 
