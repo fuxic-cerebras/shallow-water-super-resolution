@@ -46,6 +46,7 @@ from swe_sr.data.processing import AugmentationPolicy
 from swe_sr.data.storage import resolve_array_dir
 from swe_sr.metrics.field import CHANNEL_NAMES, per_channel_mse
 from swe_sr.models import build_model_from_config, resource_summary
+from swe_sr.models.common import bicubic_baseline
 from swe_sr.training.config import (
     REPO_ROOT,
     TrainingConfig,
@@ -117,6 +118,7 @@ class EpochRecord:
     samples_per_second: float
     elapsed_seconds: float
     peak_memory_mb: float
+    by_lead_time: dict[int, float] = field(default_factory=dict)
 
     def to_row(self) -> dict[str, Any]:
         row: dict[str, Any] = {
@@ -207,8 +209,8 @@ def evaluate_split(
     dataset: PairedSnapshotDataset,
     indices: list[int],
     config: TrainingConfig,
-) -> tuple[float, dict[str, float]]:
-    """Macro-averaged and per-channel normalized MSE over an entire split.
+) -> tuple[float, dict[str, float], dict[int, float]]:
+    """Macro-averaged, per-channel, and per-lead-time normalized MSE over an entire split.
 
     Accumulated as a sample-weighted sum rather than a mean of batch means, so a short final
     batch cannot skew the result.
@@ -216,6 +218,11 @@ def evaluate_split(
     model.eval()
     totals = torch.zeros(3, dtype=torch.float64)
     count = 0
+    # Stratification by lead time comes free: validation already touches every frame, so
+    # recording each sample's error costs nothing and is what reveals whether the model is
+    # improving on the early, well-posed frames or only on the late ones.
+    by_lead_time: dict[int, list[float]] = {}
+    position = 0
     for coarse, fine in _batches(
         dataset, indices, config.batch_size, shuffle=False, seed=config.seed, epoch=0
     ):
@@ -224,12 +231,21 @@ def evaluate_split(
         channel_mse = per_channel_mse(prediction.float(), fine).double()
         totals += channel_mse * coarse.shape[0]
         count += coarse.shape[0]
+
+        per_sample = ((prediction.float() - fine) ** 2).mean(dim=(1, 2, 3)).double()
+        for offset in range(coarse.shape[0]):
+            frame = dataset.sample_index[indices[position + offset]].frame
+            by_lead_time.setdefault(frame, []).append(float(per_sample[offset]))
+        position += coarse.shape[0]
+
     if count == 0:
         raise ValueError("validation split produced no batches")
     per_channel = totals / count
-    return float(per_channel.mean()), {
-        name: float(per_channel[i]) for i, name in enumerate(CHANNEL_NAMES)
-    }
+    return (
+        float(per_channel.mean()),
+        {name: float(per_channel[i]) for i, name in enumerate(CHANNEL_NAMES)},
+        {frame: float(np.mean(values)) for frame, values in by_lead_time.items()},
+    )
 
 
 def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
@@ -275,6 +291,13 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
     )
     if not train_indices or not validation_indices:
         raise ValueError("training or validation subset is empty; check the scope limits")
+
+    # The bicubic baseline stratified by lead time, computed once. Every stratified plot is
+    # read against it, and without it a rising curve cannot be told from a harder regime.
+    saved_times = {sample.frame: sample.time for sample in datasets["validation"].sample_index}
+    baseline_by_lead_time = _baseline_by_lead_time(
+        datasets["validation"], validation_indices, config
+    )
 
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
@@ -353,7 +376,7 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
         train_mse = epoch_loss / max(epoch_samples, 1)
         throughput = epoch_samples / max(time.perf_counter() - epoch_started, 1e-9)
 
-        validation_mse, per_channel = evaluate_split(
+        validation_mse, per_channel, by_lead_time = evaluate_split(
             model, datasets["validation"], validation_indices, config
         )
         record = EpochRecord(
@@ -366,6 +389,7 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
             samples_per_second=throughput,
             elapsed_seconds=time.perf_counter() - started,
             peak_memory_mb=peak_memory_megabytes(),
+            by_lead_time=by_lead_time,
         )
         history.append(record)
 
@@ -389,6 +413,9 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
             )
 
         _write_metrics(run_dir, history)
+        # Redrawn every epoch: a long run should be inspectable while it is still going, and a
+        # killed run should leave usable figures behind.
+        _write_curves(run_dir, history, saved_times=saved_times, baseline=baseline_by_lead_time)
 
         if step >= config.max_steps:
             stopped_reason = "max_steps"
@@ -397,7 +424,7 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
             stopped_reason = "early_stopping"
             break
 
-    _write_curves(run_dir, history)
+    _write_curves(run_dir, history, saved_times=saved_times, baseline=baseline_by_lead_time)
     projection = _project_full_run(history, config)
     result = TrainingResult(
         run_dir=run_dir,
@@ -424,14 +451,44 @@ def _write_metrics(run_dir: Path, history: list[EpochRecord]) -> None:
         writer.writerows(rows)
 
 
-def _write_curves(run_dir: Path, history: list[EpochRecord]) -> None:
-    """Write `curves.png` if matplotlib is available.
+@torch.no_grad()
+def _baseline_by_lead_time(
+    dataset: PairedSnapshotDataset, indices: list[int], config: TrainingConfig
+) -> dict[int, float]:
+    """Bicubic macro MSE per lead time, the reference every stratified curve is read against."""
+    baseline = bicubic_baseline(scale=4)
+    values: dict[int, list[float]] = {}
+    position = 0
+    for coarse, fine in _batches(
+        dataset, indices, config.batch_size, shuffle=False, seed=config.seed, epoch=0
+    ):
+        errors = ((baseline(coarse) - fine) ** 2).mean(dim=(1, 2, 3)).double()
+        for offset in range(coarse.shape[0]):
+            frame = dataset.sample_index[indices[position + offset]].frame
+            values.setdefault(frame, []).append(float(errors[offset]))
+        position += coarse.shape[0]
+    return {frame: float(np.mean(v)) for frame, v in values.items()}
 
-    Guarded rather than imported at module scope: `docs/ARCHITECTURE.md` lists curves.png in the
-    run directory but also insists plotting is a client of the data, never a dependency of it.
-    A headless node without matplotlib must still be able to train.
+
+def _write_curves(
+    run_dir: Path,
+    history: list[EpochRecord],
+    *,
+    saved_times: dict[int, float] | None = None,
+    baseline: dict[int, float] | None = None,
+) -> None:
+    """Write `curves.png`, redrawn after every epoch so a running job stays inspectable.
+
+    Guarded matplotlib import: `docs/ARCHITECTURE.md` lists curves.png in the run directory but
+    also insists plotting is a client of the data, never a dependency of it, so a node without
+    matplotlib must still be able to train.
+
+    The third panel is the diagnostic one. It shows validation error against lead time as
+    training progresses, against the bicubic reference and the unit line that a mean-predictor
+    scores. That is what distinguishes a model still learning to sharpen early frames from one
+    that has settled on a single smoothing policy.
     """
-    if len(history) < 1:
+    if not history:
         return
     try:
         import matplotlib
@@ -441,23 +498,60 @@ def _write_curves(run_dir: Path, history: list[EpochRecord]) -> None:
     except ImportError:
         return
 
+    panels = 3 if (saved_times and baseline) else 2
+    figure, axes = plt.subplots(1, panels, figsize=(5.5 * panels, 4.6), layout="constrained")
     steps = [record.step for record in history]
-    figure, axes = plt.subplots(1, 2, figsize=(11, 4), layout="constrained")
-    axes[0].plot(steps, [r.train_mse for r in history], label="train", marker="o", ms=3)
-    axes[0].plot(steps, [r.validation_mse for r in history], label="validation", marker="s", ms=3)
+
+    axes[0].plot(steps, [r.train_mse for r in history], "--", label="train")
+    axes[0].plot(steps, [r.validation_mse for r in history], "-o", ms=3, label="validation")
+    axes[0].set_title("loss vs optimizer step")
     axes[0].set_xlabel("optimizer step")
-    axes[0].set_ylabel("normalized MSE (macro-averaged)")
-    axes[0].set_yscale("log")
-    axes[0].legend()
-    axes[0].set_title("loss vs step")
 
     for name in CHANNEL_NAMES:
-        axes[1].plot(steps, [r.per_channel[name] for r in history], label=name, marker="o", ms=3)
-    axes[1].set_xlabel("optimizer step")
-    axes[1].set_ylabel("validation normalized MSE")
-    axes[1].set_yscale("log")
-    axes[1].legend()
+        axes[1].plot(steps, [r.per_channel[name] for r in history], "-o", ms=3, label=name)
     axes[1].set_title("per-channel validation MSE")
+    axes[1].set_xlabel("optimizer step")
+
+    for axis in axes[:2]:
+        axis.axhline(1.0, color="grey", ls="-.", lw=1, label="predicting the channel mean")
+        axis.set_ylabel("normalized MSE")
+        axis.set_yscale("log")
+        axis.grid(alpha=0.3)
+        axis.legend(fontsize=7)
+
+    if panels == 3 and saved_times and baseline:
+        axis = axes[2]
+        frames = sorted(baseline)
+        hours = [saved_times[f] / 3600 for f in frames]
+        axis.plot(
+            hours,
+            [baseline[f] for f in frames],
+            "-",
+            color="green",
+            lw=2,
+            label="bicubic baseline",
+        )
+        # Early epochs faint, latest epoch bold: the direction of travel is the whole point.
+        shown = [*history[:: max(1, len(history) // 6)], history[-1]]
+        for index, record in enumerate(shown):
+            if not record.by_lead_time:
+                continue
+            alpha = 0.25 + 0.75 * (index / max(len(shown) - 1, 1))
+            axis.plot(
+                hours,
+                [record.by_lead_time.get(f, float("nan")) for f in frames],
+                "-",
+                color="crimson",
+                alpha=alpha,
+                lw=2 if record is history[-1] else 1,
+                label=f"epoch {record.epoch}" if record is history[-1] or index == 0 else None,
+            )
+        axis.axhline(1.0, color="grey", ls="-.", lw=1, label="predicting the channel mean")
+        axis.set_title("validation MSE vs lead time (faint = early epochs)")
+        axis.set_xlabel("lead time (hours)")
+        axis.set_ylabel("normalized macro MSE")
+        axis.grid(alpha=0.3)
+        axis.legend(fontsize=7)
 
     figure.savefig(run_dir / "curves.png", dpi=110)
     plt.close(figure)
@@ -521,6 +615,11 @@ def _write_summary(
         ),
         "projection": result.projection,
         "epochs": [record.to_row() for record in result.history],
+        # Stratified by lead time so the decorrelation finding lives in the artifact rather
+        # than only in a figure that could be regenerated differently later.
+        "validation_mse_by_lead_time": [
+            {"epoch": record.epoch, "by_frame": record.by_lead_time} for record in result.history
+        ],
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True))
 
