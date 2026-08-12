@@ -23,13 +23,21 @@ because no code from it is on the critical path.
 
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
-| F-01 | unclaimed | Lead | I-01 | Add modern project definition, locked environment, lint/type/test config, and CPU CI | G1 |
-| P-01 | unclaimed | PDE/Data | F-01 | Capture deterministic `swe.py` regression fixtures | G1 |
-| P-02 | unclaimed | PDE/Data | P-01 | Extract typed config/state, analytic ICs, and headless `solve()` while preserving demo behavior | G1 |
-| P-03 | unclaimed | PDE/Data | P-02 | Add actual CFL, finite, positive-depth, wall, and mass diagnostics | G1 |
+| F-01 | ready-for-review | Lead | I-01 | Add modern project definition, locked environment, lint/type/test config, and CPU CI | G1 |
+| P-01 | ready-for-review | PDE/Data | F-01 | Capture deterministic `swe.py` regression fixtures | G1 |
+| P-02 | ready-for-review | PDE/Data | P-01 | Extract typed config/state, analytic ICs, and headless `solve()` while preserving demo behavior | G1 |
+| P-03 | ready-for-review | PDE/Data | P-02 | Add actual CFL, finite, positive-depth, wall, and mass diagnostics | G1 |
 
 G1 acceptance: deterministic per-field parity within documented tolerance; no plotting
 import in generation; all physical diagnostics pass.
+
+G1 evidence: parity is bit-for-bit rather than within a tolerance, since the kernel is a
+transcription of the pinned script. 59 tests pass; ruff, ruff format, and strict mypy are
+clean. Headlessness is enforced in a subprocess so an already-imported matplotlib cannot
+mask a real dependency. Measured: relative mass drift below 1e-13 over a full 3336-step
+trajectory, total depth strictly positive, wall-normal velocity exactly zero, and gravity
+CFL 0.100 at the fine grid. A divergent configuration is exercised as a negative control
+so the diagnostics are not vacuously green.
 
 ## Paired data
 
