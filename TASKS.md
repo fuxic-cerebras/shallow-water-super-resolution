@@ -43,14 +43,23 @@ so the diagnostics are not vacuously green.
 
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
-| D-01 | unclaimed | PDE/Data | P-03 | Create immutable 48-IC registry with stable IDs and 32/8/8 split | G2 |
-| D-02 | unclaimed | PDE/Data | D-01 | Implement primary and backup configs plus independent LR/HR paired generation | G2 |
-| D-03 | unclaimed | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
+| D-01 | ready-for-review | PDE/Data | P-03 | Create immutable 48-IC registry with stable IDs and 32/8/8 split | G2 |
+| D-02 | ready-for-review | PDE/Data | D-01 | Implement primary and backup configs plus independent LR/HR paired generation | G2 |
+| D-03 | ready-for-review | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
 | D-04 | unclaimed | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
 | V-01 | unclaimed | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
 | D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
 | D-06 | unclaimed | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
 | V-02 | unclaimed | Verifier | D-05,D-06 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics | G3 |
+
+G2 evidence so far: D-01 to D-03 are `ready-for-review`. Both smoke pairs generate with
+zero checksum mismatches, disjoint splits, bit-identical within-pair saved times, and mass
+drift at roundoff. The new 197-snapshot cadence (D017) was additionally validated at full
+scale: all 48 primary trajectories generated in 2m24s, 0 checksum mismatches, worst mass
+drift 1.07e-14, minimum depth 98.669 m, 1.41 GiB on disk under gzip. That run is a cadence
+validation, NOT the D-05 release: its manifest records a `-dirty` commit, so it is not
+reproducible from a commit alone, and D-05 still depends on D-04 normalization and the
+V-01 independent audit.
 
 G2 acceptance: both smoke pairs independently integrate matching ICs over matching
 domains and exact within-pair saved times. G3 acceptance: immutable manifests pass the

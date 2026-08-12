@@ -51,8 +51,8 @@ from swe_sr.solver.config import SolverConfig  # noqa: E402
 from swe_sr.solver.diagnostics import destagger_u, destagger_v  # noqa: E402
 from swe_sr.solver.runner import solve  # noqa: E402
 
-# Full primary-pair trajectory: 288 discarded, then every 24th step to 3336 (docs/DATASET.md).
-FULL_LAST_STEP = 3336
+# Full primary-pair trajectory: 288 discarded, then every 24th step to 4992 (D017).
+FULL_LAST_STEP = 4992
 
 
 def _run(nodes: int, seed: int, stride: int, shared_dt: float | None) -> tuple:

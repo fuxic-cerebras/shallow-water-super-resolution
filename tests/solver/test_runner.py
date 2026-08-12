@@ -127,16 +127,41 @@ def test_times_are_exact_multiples_of_dt() -> None:
 
 
 def test_sample_schedule_matches_documented_primary_and_backup_cadence() -> None:
-    """The schedules in docs/DATASET.md, as explicit integer step indices."""
-    primary = sample_schedule(discard_steps=288, stride=24, count=128)
+    """The schedules in docs/DATASET.md, as explicit integer step indices (D017)."""
+    primary = sample_schedule(discard_steps=288, stride=24, count=197)
     assert primary[0] == 288
-    assert primary[-1] == 288 + 24 * 127 == 3336
-    assert primary.size == 128
+    assert primary[-1] == 288 + 24 * 196 == 4992
+    assert primary.size == 197
 
-    backup = sample_schedule(discard_steps=576, stride=48, count=128)
+    backup = sample_schedule(discard_steps=576, stride=48, count=197)
     assert backup[0] == 576
-    assert backup[-1] == 6672
-    assert backup.size == 128
+    assert backup[-1] == 576 + 48 * 196 == 9984
+    assert backup.size == 197
+
+
+def test_paired_releases_cover_matching_physical_durations() -> None:
+    """D017: doubling the backup's stride *and* step cap is what keeps the pairs aligned.
+
+    The backup's `dt` is half the primary's because its fine grid has half the spacing, so
+    an equal step count would leave it covering half the primary's evolution. This pins the
+    property that justifies the stride choice, and the 0.392 percent residual mismatch that
+    the endpoint convention makes unavoidable.
+    """
+    primary_dt = SolverConfig(n_x=128, n_y=128).dt
+    backup_dt = SolverConfig(n_x=256, n_y=256).dt
+    assert backup_dt == pytest.approx(primary_dt / 2, rel=0.005)
+
+    primary_duration = 4992 * primary_dt
+    backup_duration = 9984 * backup_dt
+    assert primary_duration / 3600 == pytest.approx(34.86, abs=0.01)
+    assert backup_duration / 3600 == pytest.approx(34.72, abs=0.01)
+
+    mismatch = abs(primary_duration - backup_duration) / primary_duration
+    assert mismatch == pytest.approx(0.00392, abs=1e-5)
+
+    # Saved intervals also stay aligned, which is what makes the frames comparable.
+    assert 24 * primary_dt == pytest.approx(603.36, abs=0.01)
+    assert 48 * backup_dt == pytest.approx(600.99, abs=0.01)
 
 
 def test_paired_resolutions_share_bit_identical_saved_times() -> None:

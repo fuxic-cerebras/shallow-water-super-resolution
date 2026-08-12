@@ -6,14 +6,17 @@ Define two independently reproducible paired datasets:
 
 | Pair ID | Role | LR grid | HR grid | Shape factor | Raw payload |
 |---|---|---:|---:|---:|---:|
-| `swe_gaussian_32x128_v1` | Primary | 32 x 32 | 128 x 128 | x4 | 1.195 GiB |
-| `swe_gaussian_64x256_v1` | Backup | 64 x 64 | 256 x 256 | x4 | 4.781 GiB |
+| `swe_gaussian_32x128_v1` | Primary | 32 x 32 | 128 x 128 | x4 | 1.840 GiB |
+| `swe_gaussian_64x256_v1` | Backup | 64 x 64 | 256 x 256 | x4 | 7.359 GiB |
 
 For each pair, evaluate the same analytic initial condition directly on LR and HR
 coordinates and integrate both states independently with the existing `swe.py` scheme.
 No LR array is obtained by resizing an HR array. Each pair uses one time step stable
 for its HR grid, giving its LR and HR members bit-identical saved-time arrays. The two
 pair variants may use different time steps and must not be mixed in one training run.
+
+Each pair runs to the same physical duration, about 34.9 h, which matches the 4999
+updates the reference `swe.py` performs on the primary pair's time step (D017).
 
 With nominal resting depth, the shared steps are approximately 25.1 s for the primary
 pair and 12.5 s for the backup pair. The generator calculates and validates the actual
@@ -64,20 +67,23 @@ the wall margin, or if a quick stability preflight produces non-finite values. R
 
 Create one immutable `ic_registry_v1.json` with 48 analytic IC specifications, seeds,
 stable trajectory UUIDs, and split membership. Both resolution pairs consume it.
-Generate 128 saved snapshots per trajectory. The primary nominally discards 288 steps
-and saves every 24; the backup nominally discards 576 and saves every 48. Derive exact
-step counts and float64 physical times from resolved configs, not rounded intervals.
+Generate 197 saved snapshots per trajectory (D017). The primary discards 288 steps and
+saves every 24, ending at step 4992; the backup discards 576 and saves every 48, ending
+at step 9984. Both the stride and the step cap are doubled for the backup because its
+`dt` is half the primary's, which is what keeps the two pairs at matching physical times
+and matching frame counts. Derive exact step counts and float64 physical times from
+resolved configs, not rounded intervals.
 
 | Split | Trajectories | Snapshot pairs | Seed IDs |
 |---|---:|---:|---|
-| Train | 32 | 4,096 | 0-31 |
-| Validation | 8 | 1,024 | 32-39 |
-| Test | 8 | 1,024 | 40-47 |
+| Train | 32 | 6,304 | 0-31 |
+| Validation | 8 | 1,576 | 32-39 |
+| Test | 8 | 1,576 | 40-47 |
 
 The split is fixed before simulation. A trajectory and all its time frames belong to
 one split. Do not reshuffle snapshots across splits.
 
-The combined float32 array payload is approximately 5.977 GiB before metadata and
+The combined float32 array payload is approximately 9.198 GiB before metadata and
 compression. Backup solver work is roughly eight times primary work: about four times
 the grid points and twice the time steps. Generate and validate primary first, then a
 backup smoke dataset, then stream the full backup release.

@@ -47,8 +47,10 @@
 ## D007 - One-day data budget
 
 - Status: accepted as a planning default
-- Decision: the primary has 6,144 paired snapshots, approximately 1.2 GiB raw, and
+- Decision: the primary has 9,456 paired snapshots, approximately 1.84 GiB raw, and
   no more than 30,000 optimizer steps per model. Backup has a separate budget.
+- Amended by D017, which raised the snapshot count from 6,144; the storage target and
+  the optimizer-step ceiling are unchanged.
 - Reason: this is a practical baseline that can be expanded after measured scaling.
 
 ## D008 - Dual resolution-pair releases
@@ -192,6 +194,46 @@
 - Reason: `docs/AGENT_WORKFLOW.md` requires PDE/Data and ML to work in parallel against
   a frozen contract, with ML using synthetic fixtures until real data pass G3. This is
   that contract in one place.
+
+## D017 - Trajectories run to the reference solver's duration, 197 snapshots per pair
+
+- Status: accepted, supersedes the 128-snapshot figure in D007
+- Decision: integrate each trajectory for the same number of updates the reference
+  `swe.py` performs, 4999 on the primary pair's time step, and save 197 snapshots. The
+  primary discards 288 steps and saves every 24 to step 4992; the backup discards 576 and
+  saves every 48 to step 9984. Both pairs keep their existing strides.
+- Reason: two findings from measuring the data rather than assuming.
+
+  First, temporal density was not the limiting factor. Field autocorrelation against step
+  lag on a real trajectory gives 0.9999 at lag 1, 0.9690 at lag 24, and a zero crossing at
+  roughly lag 150. So a trajectory holds only about 22 statistically independent states at
+  the old 3336-step length however densely it is sampled, and the previous 128 snapshots
+  already oversampled that by roughly six times. Saving every step would have cost 26
+  times the bytes for frames 99.99 percent correlated with their neighbours.
+
+  Second, what does help is a longer trajectory. Extending to 4992 steps raises the
+  independent-state count per trajectory from about 22 to about 33, a genuine 50 percent
+  gain in independent training signal, for 1.54 times the storage.
+- Consequences:
+  - Snapshot pairs per pair ID rise from 6,144 to 9,456: 6,304 train, 1,576 validation,
+    1,576 test. Any report quoting 1,024 held-out test snapshots is stale.
+  - Primary raw payload rises from 1.195 GiB to 1.840 GiB, still inside the sub-2-GiB raw
+    target in `docs/PROJECT_SPEC.md`, so D007's storage budget stands. The backup rises
+    from 4.781 GiB to 7.359 GiB and the combined payload to 9.198 GiB.
+  - Generation cost stays small: about 1.7 min for the full primary release and 10.8 min
+    for the backup, measured at 1.44 s per paired primary trajectory.
+  - The backup's stride and step cap are both double the primary's, not because of the
+    snapshot count but because its `dt` is half: its fine grid has half the spacing, so
+    twice the steps cover the same physical time. Doubling both keeps the pairs aligned in
+    physical duration (34.86 h against 34.72 h, the same 0.392 percent mismatch already
+    recorded) and in frame count (197 each). Capping both at the same *step* count would
+    instead have left the backup covering half the primary's evolution, which would
+    invalidate the paired cross-resolution bootstrapping this file's D008 relies on.
+  - Verified admissible at the longer durations before adopting: worst relative mass drift
+    1.65e-15, minimum total depth 98.500 m, gravity CFL unchanged at 0.100 on both fine
+    grids, no non-finite values, across all four grids.
+  - The training-trajectory-count ablation O-02 remains the right way to test whether
+    trajectory count matters more than snapshot count; this decision does not pre-empt it.
 
 ## Template for new decisions
 

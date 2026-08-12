@@ -5,11 +5,17 @@
 # two must never be mixed in one training run (docs/DATASET.md).
 #
 # The shared time step here is 12.5206 s, half the primary's only approximately: the
-# spacing ratio is 127/255, not exactly 1/2, so the saved interval is 600.989 s against
-# the primary's 603.355 s. That 0.392 percent mismatch is recorded in the Open Questions
+# spacing ratio is 127/255, not exactly 1/2, so the saved interval is 600.99 s against
+# the primary's 603.36 s. That 0.392 percent mismatch is recorded in the Open Questions
 # section of docs/PROJECT_SPEC.md and matters for any cross-resolution comparison.
 #
-# Payload: 4.781 GiB before compression, and roughly eight times the primary's solver
+# The stride of 48 against the primary's 24 is what makes the two pairs comparable: this
+# pair's dt is half the primary's because its fine grid has half the spacing, so twice the
+# steps are needed to cover the same physical time. Doubling both the stride and the step
+# cap keeps the saved times and the frame count aligned with the primary (D017): 197
+# snapshots to step 9984, which is 34.72 h against the primary's 34.86 h.
+#
+# Payload: 7.359 GiB before compression, and roughly eight times the primary's solver
 # work (four times the grid points, twice the steps).
 
 dataset_id: swe_gaussian_64x256_v1
@@ -19,10 +25,10 @@ resolution_family: swe_gaussian_x4
 coarse_nodes: 64
 fine_nodes: 256
 
-# Last step is 576 + 48 * 127 = 6672, giving 23.20 h of physical time.
+# Last step is 576 + 48 * 196 = 9984, giving 34.72 h of physical time.
 discard_steps: 576
 sample_stride: 48
-snapshot_count: 128
+snapshot_count: 197
 
 output_root: data
 registry_path: data/registries/ic_registry_v1.json
