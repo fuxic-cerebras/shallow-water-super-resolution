@@ -47,7 +47,7 @@ so the diagnostics are not vacuously green.
 | D-02 | ready-for-review | PDE/Data | D-01 | Implement primary and backup configs plus independent LR/HR paired generation | G2 |
 | D-03 | ready-for-review | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
 | D-04 | ready-for-review | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
-| V-01 | unclaimed | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
+| V-01 | ready-for-review | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
 | D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
 | D-06 | deferred | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
 | V-02 | unclaimed | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
