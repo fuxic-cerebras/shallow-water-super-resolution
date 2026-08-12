@@ -46,13 +46,13 @@ so the diagnostics are not vacuously green.
 | D-01 | ready-for-review | PDE/Data | P-03 | Create immutable 48-IC registry with stable IDs and 32/8/8 split | G2 |
 | D-02 | ready-for-review | PDE/Data | D-01 | Implement primary and backup configs plus independent LR/HR paired generation | G2 |
 | D-03 | ready-for-review | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
-| D-04 | unclaimed | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
+| D-04 | ready-for-review | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
 | V-01 | unclaimed | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
 | D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
 | D-06 | unclaimed | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
 | V-02 | unclaimed | Verifier | D-05,D-06 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics | G3 |
 
-G2 evidence so far: D-01 to D-03 are `ready-for-review`. Both smoke pairs generate with
+G2 evidence so far: D-01 to D-04 are `ready-for-review`. Both smoke pairs generate with
 zero checksum mismatches, disjoint splits, bit-identical within-pair saved times, and mass
 drift at roundoff. The new 197-snapshot cadence (D017) was additionally validated at full
 scale: all 48 primary trajectories generated in 2m24s, 0 checksum mismatches, worst mass

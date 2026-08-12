@@ -235,6 +235,65 @@
   - The training-trajectory-count ablation O-02 remains the right way to test whether
     trajectory count matters more than snapshot count; this decision does not pre-empt it.
 
+## D018 - Augmentation implemented but disabled by default
+
+- Status: accepted, corrects `docs/DATASET.md`
+- Decision: implement the reflection and transpose transforms with correct vector handling
+  and keep them available behind config, but apply **no** augmentation by default.
+- Reason: `docs/DATASET.md` calls reflection and transpose "symmetry-preserving". For this
+  solver they are not. Measured discrepancy between transforming-then-evolving and
+  evolving-then-transforming, as a fraction of the evolved field's peak amplitude:
+
+  | Configuration | `reflect_x` | `reflect_y` | `transpose` |
+  |---|---:|---:|---:|
+  | Coriolis + beta (project default) | 0.914 | 0.919 | 0.934 |
+  | Coriolis, no beta | 0.849 | 0.908 | 0.862 |
+  | No Coriolis | 0.048 | 0.048 | **0.000** |
+
+  Two independent causes, which the no-Coriolis row isolates:
+
+  1. **Rotation is chiral.** A mirror image of a rotating system rotates the other way, so a
+     reflection is a symmetry only if `f -> -f`. Here `f` runs from 9e-5 to 1.1e-4 and is
+     positive everywhere, so it never is. The transpose additionally maps `f = f_0 + beta*y`
+     onto an `x` dependence. This dominates, at roughly 0.9.
+  2. **The C-grid staggering is not reflection-symmetric.** `u_i` sits at `x_{i+1/2}`, offset
+     east, so reflecting maps an east-face variable onto a west-face position, a different
+     index alignment. Worth 0.048 on its own, and it is why the reflections stay broken even
+     with rotation disabled, while the transpose becomes exact.
+- Consequences:
+  - The transforms are geometrically exact on the destaggered, cell-centered fields the
+    loader produces: the grid is uniform and square, so flipping or swapping axes maps grid
+    points onto grid points. What they are not is *dynamically* valid -- an augmented pair
+    represents a state this solver could not produce.
+  - Enabling them is therefore an empirical question, not a free win: the model could learn a
+    reflection equivariance that the true coarse-to-fine operator does not have, because the
+    coarse solver's error structure is chirally biased by rotation. `docs/EXPERIMENT_PLAN.md`
+    says not to add complexity before the MSE-only baseline exists, so the default is off and
+    an ablation can measure it later.
+  - `augmentation_symmetry_error` in `swe_sr/data/processing.py` keeps this measurable rather
+    than a comment, and the tests assert the failure as a lower bound: if a future change made
+    these symmetries, that would be a significant physics change and should fail loudly.
+  - The transpose's gate in `docs/DATASET.md` ("use it only after a unit test verifies the
+    transformation") is satisfied by `tests/data/test_processing.py`, which verifies both the
+    axis swap and the `u`/`v` channel swap, and includes the wrong-vector-reflection negative
+    test from `docs/VALIDATION.md`.
+
+## D019 - Normalization is fitted on destaggered fine training fields
+
+- Status: accepted
+- Decision: fit per-channel statistics on the **destaggered** fine-grid training fields, not
+  the raw staggered arrays, and record counts, sums, and sums of squares alongside the mean
+  and standard deviation.
+- Reason: models consume the processed cell-centered representation (D011), and destaggering
+  is an averaging operator that reduces velocity variance. Fitting on raw arrays would leave
+  the model's inputs systematically mis-scaled. `docs/DATASET.md` says "fine-grid training
+  states" without specifying which layer, so this pins it.
+- Consequences: statistics are accumulated in float64 by streaming one trajectory at a time,
+  so memory stays flat over a multi-GiB release. The three accumulators let an auditor
+  re-derive the statistics independently instead of trusting the generator. The generator now
+  also writes the `processed/<dataset_id>/{manifest.json,normalization.json}` layer that
+  `docs/DATASET.md` specifies and that `CLAUDE.md`'s `validate` command points at.
+
 ## Template for new decisions
 
 ```text

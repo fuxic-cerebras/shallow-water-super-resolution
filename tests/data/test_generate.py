@@ -363,16 +363,46 @@ def test_regenerating_over_an_existing_dataset_is_refused(
         generate_dataset(FAST_CONFIG, registry=registry, output_root=tmp_path, verbose=False)
 
 
+def test_raw_and_processed_manifests_differ_only_by_normalization(
+    generated: tuple[DatasetManifest, Path],
+) -> None:
+    """`generate_dataset` returns the *processed* manifest (D019).
+
+    The raw manifest describes the arrays; the processed one is the same manifest plus the
+    train-only normalization the loader needs. They must therefore have different hashes,
+    and be otherwise identical -- if the processed layer diverged in any other field, a
+    checkpoint could not be traced back to the arrays it was trained on.
+    """
+    processed_manifest, raw_dir = generated
+    raw_manifest = load_manifest(raw_dir / "manifest.json")
+    processed_dir = raw_dir.parent.parent / "processed" / processed_manifest.dataset_id
+
+    assert not raw_manifest.normalization, "raw manifest must not carry normalization"
+    assert processed_manifest.normalization, "processed manifest must carry normalization"
+    assert raw_manifest.manifest_hash != processed_manifest.manifest_hash
+
+    reloaded = load_manifest(processed_dir / "manifest.json")
+    assert reloaded.manifest_hash == processed_manifest.manifest_hash
+    assert (processed_dir / "normalization.json").is_file()
+
+    raw_payload = raw_manifest.to_dict()
+    processed_payload = processed_manifest.to_dict()
+    del raw_payload["normalization"], processed_payload["normalization"]
+    assert raw_payload == processed_payload
+
+
 def test_manifest_round_trips_and_refuses_conflicting_overwrite(
     generated: tuple[DatasetManifest, Path], tmp_path: Path
 ) -> None:
-    manifest, raw_dir = generated
-    reloaded = load_manifest(raw_dir / "manifest.json")
-    assert reloaded.manifest_hash == manifest.manifest_hash
-
+    _, raw_dir = generated
+    # Round-trip the manifest as written to disk: reading it back and re-serializing must
+    # reproduce the same hash, or provenance references to that hash are meaningless.
+    on_disk = load_manifest(raw_dir / "manifest.json")
     path = tmp_path / "manifest.json"
-    manifest.write(path)
-    assert manifest.write(path) == manifest.manifest_hash  # idempotent
+    assert on_disk.write(path) == on_disk.manifest_hash
+    assert load_manifest(path).manifest_hash == on_disk.manifest_hash
+
+    assert on_disk.write(path) == on_disk.manifest_hash  # idempotent rewrite is allowed
 
     conflicting = load_manifest(raw_dir / "manifest.json")
     conflicting.trajectories = conflicting.trajectories[:-1] or conflicting.trajectories
