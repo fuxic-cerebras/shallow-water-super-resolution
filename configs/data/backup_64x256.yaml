@@ -1,0 +1,30 @@
+# Backup paired dataset: 64 x 64 coarse -> 256 x 256 fine (D008).
+#
+# A separate release from the primary. It shares the IC registry and splits but NOT the
+# manifest, normalization statistics, time step, checkpoints, or training runs, and the
+# two must never be mixed in one training run (docs/DATASET.md).
+#
+# The shared time step here is 12.5206 s, half the primary's only approximately: the
+# spacing ratio is 127/255, not exactly 1/2, so the saved interval is 600.989 s against
+# the primary's 603.355 s. That 0.392 percent mismatch is recorded in the Open Questions
+# section of docs/PROJECT_SPEC.md and matters for any cross-resolution comparison.
+#
+# Payload: 4.781 GiB before compression, and roughly eight times the primary's solver
+# work (four times the grid points, twice the steps).
+
+dataset_id: swe_gaussian_64x256_v1
+pair_id: swe_gaussian_64x256_v1
+resolution_family: swe_gaussian_x4
+
+coarse_nodes: 64
+fine_nodes: 256
+
+# Last step is 576 + 48 * 127 = 6672, giving 23.20 h of physical time.
+discard_steps: 576
+sample_stride: 48
+snapshot_count: 128
+
+output_root: data
+registry_path: data/registries/ic_registry_v1.json
+
+diagnostic_stride: 16

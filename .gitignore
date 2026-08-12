@@ -1,7 +1,17 @@
 # Generated datasets, checkpoints, and experiment logs are never committed
 # (CLAUDE.md: "Do not commit generated datasets, model checkpoints, or experiment logs").
-data/
+# Written as `data/*` rather than `data/` so the registry exception below can apply: git
+# cannot re-include anything beneath an excluded directory.
+data/*
 runs/
+
+# The IC registry is the one exception: it is not generated data but the immutable shared
+# contract that every dataset manifest references by hash, and that both resolution pairs
+# consume (D008). At ~31 KB of diffable JSON it is cheap to track, and tracking it means a
+# lost registry cannot orphan a released manifest. It stays reproducible from seeds alone,
+# and tests/data/test_registry.py pins its hash so a change to the sampling code is a
+# visible failure rather than a silent renumbering.
+!data/registries/
 
 # Solver demo byproducts (swe.py writes these into the working directory)
 param_output.txt
