@@ -103,7 +103,7 @@ what makes any reported gain over bicubic attributable to the learned residual.
 | M-03 | ready-for-review | ML | R-01,I-01 | Adapt EDSR x4 to three normalized physical channels | G4 |
 | M-04 | ready-for-review | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
 | V-03 | ready-for-review | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
-| T-01 | unclaimed | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
+| T-01 | ready-for-review | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
 | T-02 | unclaimed | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
 | I-02 | unclaimed | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |

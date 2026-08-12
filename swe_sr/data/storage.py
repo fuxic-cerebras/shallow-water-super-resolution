@@ -133,6 +133,28 @@ def write_trajectory(
     return records
 
 
+def resolve_array_dir(manifest_path: Path, dataset_id: str) -> Path:
+    """Locate the directory holding a dataset's trajectory files.
+
+    Arrays live under `raw/<dataset_id>/trajectories/`, but the manifest a caller has in hand is
+    usually the *processed* one, which sits in a sibling `processed/<dataset_id>/` (D019). This
+    resolves either to the array directory so callers need not know which manifest they were
+    given. Shared by the loader, the validator, and training, since three copies of this rule
+    would be three chances to disagree.
+    """
+    manifest_path = Path(manifest_path)
+    direct = manifest_path.parent
+    if (direct / "trajectories").is_dir():
+        return direct
+    sibling = direct.parent.parent / "raw" / dataset_id
+    if (sibling / "trajectories").is_dir():
+        return sibling
+    raise FileNotFoundError(
+        f"cannot find a trajectories/ directory for {dataset_id!r}; looked in {direct} and "
+        f"{sibling}"
+    )
+
+
 def read_fields(path: Path, array_name: str) -> np.ndarray:
     with h5py.File(path, "r") as handle:
         return np.asarray(handle[array_name][:])

@@ -25,7 +25,13 @@ import numpy as np
 from swe_sr.data.manifest import DatasetManifest, load_manifest
 from swe_sr.data.normalization import Normalization, check_pair_id
 from swe_sr.data.processing import AugmentationPolicy, destagger
-from swe_sr.data.storage import COARSE_ARRAY, FINE_ARRAY, read_frame, read_times
+from swe_sr.data.storage import (
+    COARSE_ARRAY,
+    FINE_ARRAY,
+    read_frame,
+    read_times,
+    resolve_array_dir,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import torch
@@ -184,7 +190,7 @@ def load_split(
     manifest = load_manifest(manifest_path)
     return PairedSnapshotDataset(
         manifest,
-        manifest_path.parent,
+        resolve_array_dir(manifest_path, manifest.dataset_id),
         split=split,
         normalization=normalization,
         augmentation=augmentation,
