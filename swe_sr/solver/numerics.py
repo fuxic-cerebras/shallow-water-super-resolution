@@ -103,9 +103,7 @@ class ShallowWaterKernel:
         self._tau_y: np.ndarray | None = None
         if config.use_wind:
             # swe.py:89-90. tau_x varies with y; tau_y is identically zero.
-            self._tau_x = -config.wind_stress_amplitude * np.cos(
-                np.pi * config.y / config.length_y
-            )
+            self._tau_x = -config.wind_stress_amplitude * np.cos(np.pi * config.y / config.length_y)
             self._tau_y = np.zeros(config.n_y)
 
         self._sigma: np.ndarray | None = None
@@ -121,9 +119,7 @@ class ShallowWaterKernel:
             )
             if config.use_sink:
                 # Uniform sink sized to remove exactly what the source adds (swe.py:124).
-                self._sink = (
-                    np.ones(shape) * float(self._sigma.sum()) / (config.n_x * config.n_y)
-                )
+                self._sink = np.ones(shape) * float(self._sigma.sum()) / (config.n_x * config.n_y)
 
     def step(self, state: SolverState) -> None:
         """Advance `state` by one time step, in place."""

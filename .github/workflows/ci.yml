@@ -1,0 +1,59 @@
+name: CI
+
+# CPU-only CI, matching the project's actual training target: no CUDA device is
+# reachable on any partition (D015), so nothing here needs or assumes a GPU.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Lint, type-check, fast tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The solver reference is a pinned submodule (D010). Without it the parity
+          # tests cannot run at all, so this is required rather than optional.
+          # Cross-repository submodule checkout needs a token with read access to
+          # fuxic-cerebras/shallow-water; the default GITHUB_TOKEN is scoped to this
+          # repository only.
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # CPU wheels only; the CUDA build is a large download and never exercised.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      - name: Confirm the solver reference is present
+        run: |
+          test -f references/shallow-water/swe.py \
+            || { echo "solver submodule missing; parity tests cannot run"; exit 1; }
+
+      - name: Lint
+        run: ruff check swe_sr tests
+
+      - name: Format check
+        run: ruff format --check swe_sr tests
+
+      - name: Type-check
+        run: mypy
+
+      - name: Fast tests
+        # Excludes anything marked slow or requiring a generated dataset, so this stays
+        # a quick signal. Full dataset and training runs are scheduled separately.
+        run: pytest -q -m "not slow and not dataset"
