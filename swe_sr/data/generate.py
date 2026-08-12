@@ -247,9 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = GenerationConfig.from_yaml(args.config)
-    manifest = generate_dataset(
-        config, output_root=args.output_root, verbose=not args.quiet
-    )
+    manifest = generate_dataset(config, output_root=args.output_root, verbose=not args.quiet)
     print(f"\ndataset_id     : {manifest.dataset_id}")
     print(f"trajectories   : {len(manifest.trajectories)}")
     print(f"registry_hash  : {manifest.ic_registry_hash}")

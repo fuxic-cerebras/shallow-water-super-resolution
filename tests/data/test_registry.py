@@ -93,10 +93,7 @@ def test_registry_is_reproducible_bit_for_bit() -> None:
     assert first.to_json() == second.to_json()
     # Pinned literally: this hash goes into every dataset manifest, so a change to the
     # sampling or serialization must be noticed here rather than in a stale manifest.
-    assert (
-        first.registry_hash
-        == "976e3a577a25a633c6a2625263f23e60482768965029805a5efd16be97ab7c8c"
-    )
+    assert first.registry_hash == "976e3a577a25a633c6a2625263f23e60482768965029805a5efd16be97ab7c8c"
 
 
 def test_registry_hash_changes_when_any_entry_changes(
@@ -107,14 +104,10 @@ def test_registry_hash_changes_when_any_entry_changes(
     unchanged = InitialConditionRegistry(entries=(mutated_entry, *registry.entries[1:]))
     assert unchanged.registry_hash == registry.registry_hash
 
-    tampered_ic = replace(
-        registry.entries[0].initial_condition.bumps[0], amplitude=0.123456
-    )
+    tampered_ic = replace(registry.entries[0].initial_condition.bumps[0], amplitude=0.123456)
     tampered = replace(
         registry.entries[0],
-        initial_condition=replace(
-            registry.entries[0].initial_condition, bumps=(tampered_ic,)
-        ),
+        initial_condition=replace(registry.entries[0].initial_condition, bumps=(tampered_ic,)),
     )
     different = InitialConditionRegistry(entries=(tampered, *registry.entries[1:]))
     assert different.registry_hash != registry.registry_hash

@@ -103,9 +103,7 @@ def test_stored_coordinate_hashes_match_the_manifest(
             coordinate_hash(coords["coarse_x"], coords["coarse_y"])
             == manifest.coarse_coordinate_hash
         )
-        assert (
-            coordinate_hash(coords["fine_x"], coords["fine_y"]) == manifest.fine_coordinate_hash
-        )
+        assert coordinate_hash(coords["fine_x"], coords["fine_y"]) == manifest.fine_coordinate_hash
 
 
 def test_shape_factor_is_four_but_spacing_ratio_is_not(

@@ -1,9 +1,15 @@
 # Generated datasets, checkpoints, and experiment logs are never committed
 # (CLAUDE.md: "Do not commit generated datasets, model checkpoints, or experiment logs").
-# Written as `data/*` rather than `data/` so the registry exception below can apply: git
-# cannot re-include anything beneath an excluded directory.
-data/*
-runs/
+# Every path here is anchored with a leading slash, which matters more than it looks.
+# An unanchored `data/` matches ANY directory named data at any depth, so it silently
+# swallowed `swe_sr/data/` and `tests/data/` -- hiding the entire data layer from ruff,
+# which respects .gitignore. Local lint runs looked clean while checking 17 of 25 files.
+# Anchored, these match only the generated output directories at the repository root.
+#
+# `/data/*` rather than `/data/` so the registry exception below can apply: git cannot
+# re-include anything beneath an excluded directory.
+/data/*
+/runs/
 
 # The IC registry is the one exception: it is not generated data but the immutable shared
 # contract that every dataset manifest references by hash, and that both resolution pairs
@@ -11,7 +17,7 @@ runs/
 # lost registry cannot orphan a released manifest. It stays reproducible from seeds alone,
 # and tests/data/test_registry.py pins its hash so a change to the sampling code is a
 # visible failure rather than a silent renumbering.
-!data/registries/
+!/data/registries/
 
 # Solver demo byproducts (swe.py writes these into the working directory)
 param_output.txt

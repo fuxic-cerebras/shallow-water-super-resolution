@@ -243,7 +243,9 @@ def validate_registry(registry: InitialConditionRegistry) -> None:
     for split, start, stop in SPLIT_LAYOUT:
         members = registry.by_split(split)
         if len(members) != stop - start:
-            problems.append(f"split {split} has {len(members)} trajectories, expected {stop - start}")
+            problems.append(
+                f"split {split} has {len(members)} trajectories, expected {stop - start}"
+            )
 
     split_ids: dict[Split, set[str]] = {
         split: {entry.trajectory_id for entry in registry.by_split(split)}
@@ -254,9 +256,7 @@ def validate_registry(registry: InitialConditionRegistry) -> None:
         for right in splits[index + 1 :]:
             overlap = split_ids[left] & split_ids[right]
             if overlap:
-                problems.append(
-                    f"splits {left} and {right} share {len(overlap)} trajectory ID(s)"
-                )
+                problems.append(f"splits {left} and {right} share {len(overlap)} trajectory ID(s)")
 
     if problems:
         raise RegistryValidationError("; ".join(problems))
