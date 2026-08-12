@@ -49,8 +49,8 @@ so the diagnostics are not vacuously green.
 | D-04 | ready-for-review | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
 | V-01 | unclaimed | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
 | D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
-| D-06 | unclaimed | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
-| V-02 | unclaimed | Verifier | D-05,D-06 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics | G3 |
+| D-06 | deferred | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
+| V-02 | unclaimed | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
 
 G2 evidence so far: D-01 to D-04 are `ready-for-review`. Both smoke pairs generate with
 zero checksum mismatches, disjoint splits, bit-identical within-pair saved times, and mass
@@ -82,6 +82,16 @@ independent audit. Primary and backup have separate G3 releases.
 
 Backup 64->256 training is a later scaling task. It uses separate configs, checkpoints,
 normalization, and a newly approved compute budget.
+
+Backup work is DEFERRED as of 2026-08-12, by decision of the project owner, to keep the
+primary 32->128 experiment moving. This is the ordering `docs/AGENT_WORKFLOW.md` already
+prescribes: backup data is a separate G3 release that must not delay the primary. Deferred
+items: D-06 (full backup release), the backup half of V-02, and O-01 (backup training).
+Their tests are marked `backup` rather than deleted, so coverage returns with
+`pytest -m backup`; `scripts/check.sh` deselects that marker and echoes the exclusion.
+Backup *config* assertions stay in the default suite, since they cost nothing and pin the
+D017 stride and duration relationship. Nothing about the backup design is withdrawn: its
+config, smoke config, and the D008/D017 decisions all stand.
 
 ## Evaluation and final review
 

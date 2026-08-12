@@ -499,6 +499,7 @@ def test_documented_split_sizes_follow_from_the_snapshot_count() -> None:
     assert payload_gib < 2.0
 
 
+@pytest.mark.backup
 def test_both_pairs_consume_the_same_registry_but_produce_different_manifests(
     tmp_path: Path,
 ) -> None:
