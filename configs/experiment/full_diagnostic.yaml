@@ -1,0 +1,28 @@
+# Full-length DIAGNOSTIC run, not the frozen T-03 experiment.
+#
+# Identical to full.yaml in every schedule value. The only difference is the stage label, which
+# marks the run's purpose in its own provenance: it exists to test whether the early-lead-time
+# regression seen in the pilot is an undertraining artefact or a genuine consequence of uniform
+# MSE over a mixture of recoverable and unrecoverable regimes.
+#
+# The pilot reached only 1,970 of 30,000 steps (6.6 percent) on 8 of 32 trajectories, and at
+# that point the models were far worse than bicubic below about 9 hours of lead time while much
+# better beyond it. If that gap closes by 30,000 steps there is no design problem. If it does
+# not, the objective needs to change -- conditioning on lead time, or restricting the range.
+#
+# Labelled `diagnostic` rather than `full` so it cannot later be mistaken for the frozen
+# experiment, which requires I-02 to freeze the manifest, commit, configs, seed, and metrics
+# first.
+
+stage: diagnostic
+learning_rate: 1.0e-4
+weight_decay: 1.0e-6
+warmup_steps: 500
+batch_size: 8
+gradient_clip_norm: 1.0
+max_epochs: 100
+max_steps: 30000
+early_stopping_patience: 15
+seed: 20260812
+precision: bf16
+augmentations: []
