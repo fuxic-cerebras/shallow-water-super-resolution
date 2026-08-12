@@ -1,0 +1,41 @@
+# Generated datasets, checkpoints, and experiment logs are never committed
+# (CLAUDE.md: "Do not commit generated datasets, model checkpoints, or experiment logs").
+data/
+runs/
+
+# Solver demo byproducts (swe.py writes these into the working directory)
+param_output.txt
+*.gif
+*.mp4
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Claude Code local overrides (agent/command definitions ARE tracked)
+.claude/settings.local.json
