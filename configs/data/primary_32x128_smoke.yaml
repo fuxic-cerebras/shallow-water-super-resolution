@@ -1,0 +1,26 @@
+# Smoke version of the primary pair, for the G2 gate.
+#
+# G2 acceptance (docs/AGENT_WORKFLOW.md) asks only that both pairs independently integrate
+# matching ICs over matching domains with exact within-pair saved times. That needs a few
+# trajectories, not the full release, so this keeps the real step cadence and physics and
+# only reduces the trajectory and snapshot counts. Reducing the cadence instead would make
+# the smoke test stop exercising the schedule it is supposed to validate.
+#
+# trajectory_limit is applied per split, so all three splits are represented.
+
+dataset_id: swe_gaussian_32x128_smoke
+pair_id: swe_gaussian_32x128_v1
+resolution_family: swe_gaussian_x4
+
+coarse_nodes: 32
+fine_nodes: 128
+
+discard_steps: 288
+sample_stride: 24
+snapshot_count: 8
+
+output_root: data
+registry_path: data/registries/ic_registry_v1.json
+
+diagnostic_stride: 8
+trajectory_limit: 2

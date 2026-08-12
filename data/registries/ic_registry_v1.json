@@ -1,0 +1,1134 @@
+{
+  "schema_version": 1,
+  "split_layout": {
+    "test": {
+      "count": 8,
+      "start_seed": 40,
+      "stop_seed": 48
+    },
+    "train": {
+      "count": 32,
+      "start_seed": 0,
+      "stop_seed": 32
+    },
+    "validation": {
+      "count": 8,
+      "start_seed": 32,
+      "stop_seed": 40
+    }
+  },
+  "total_trajectories": 48,
+  "trajectories": [
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.5409735239361947,
+            "center_x": 213226.4243703517,
+            "center_y": 280940.8136135916,
+            "width": 79838.26925701287
+          },
+          {
+            "amplitude": -1.2294965609839985,
+            "center_x": 263888.8841926805,
+            "center_y": 191577.85556659976,
+            "width": 98364.9676671949
+          },
+          {
+            "amplitude": 1.3574042765875693,
+            "center_x": 169806.6698327514,
+            "center_y": -239819.43298370967,
+            "width": 65150.61750935815
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 0,
+      "split": "train",
+      "trajectory_id": "993f3dad-1558-5f98-8ef6-c8c38071afad"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.6441596127196337,
+            "center_x": -99898.30330827317,
+            "center_y": -40705.833881902596,
+            "width": 117275.50329792645
+          },
+          {
+            "amplitude": -0.9091991363691613,
+            "center_x": -263577.3357731102,
+            "center_y": 141436.33974348026,
+            "width": 110523.6426601243
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 1,
+      "split": "train",
+      "trajectory_id": "57618449-8dcd-5a3f-ac89-839343ec3283"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.3142257405942803,
+            "center_x": 67500.98271517846,
+            "center_y": 154125.6653835029,
+            "width": 81417.01288777679
+          },
+          {
+            "amplitude": 0.5551466273330682,
+            "center_x": 109992.42786267638,
+            "center_y": 43502.63778604515,
+            "width": 75334.55903516318
+          },
+          {
+            "amplitude": -0.9326307908047872,
+            "center_x": -54590.178308097355,
+            "center_y": 94159.54593659833,
+            "width": 73253.42448179348
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 2,
+      "split": "train",
+      "trajectory_id": "e65314a3-c2d0-5af1-af69-25e53fb4d11f"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.3012744652063968,
+            "center_x": -279199.59233644704,
+            "center_y": -46002.090729758376,
+            "width": 78024.57786278549
+          },
+          {
+            "amplitude": -0.6597389146370786,
+            "center_x": -245167.10277791033,
+            "center_y": -69027.53819349036,
+            "width": 91347.82139774587
+          },
+          {
+            "amplitude": -0.9306280204141778,
+            "center_x": 148961.88743548392,
+            "center_y": 285768.0111693191,
+            "width": 93420.71004417501
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 3,
+      "split": "train",
+      "trajectory_id": "86b45b67-2504-53f1-8c90-93c56d6812c2"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.476243705707704,
+            "center_x": 67366.63680836093,
+            "center_y": -77505.64879979359,
+            "width": 93123.01540478988
+          },
+          {
+            "amplitude": -0.6745278161440285,
+            "center_x": 24764.570857031445,
+            "center_y": 226681.07225355977,
+            "width": 109104.56638421939
+          },
+          {
+            "amplitude": -0.9304962777294131,
+            "center_x": 307449.8517502491,
+            "center_y": -82727.53807492703,
+            "width": 91243.44381115635
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 4,
+      "split": "train",
+      "trajectory_id": "795808ec-6f67-5396-b201-16fcef8fee84"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.0153255610421419,
+            "center_x": -250803.8125066814,
+            "center_y": -65576.19973419662,
+            "width": 109436.74343550715
+          },
+          {
+            "amplitude": 0.5452751939024452,
+            "center_x": 324532.3102344119,
+            "center_y": 99060.62870329549,
+            "width": 87466.02629809993
+          },
+          {
+            "amplitude": -0.934947552225142,
+            "center_x": 273764.34966336214,
+            "center_y": 236971.31601932785,
+            "width": 77898.06109184031
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 5,
+      "split": "train",
+      "trajectory_id": "c6016eb7-7fc4-53e4-8528-b1600079d779"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.8690672397953783,
+            "center_x": 323897.64626914344,
+            "center_y": 88213.94227166113,
+            "width": 83879.89783973362
+          },
+          {
+            "amplitude": -0.8299634553854583,
+            "center_x": -223067.91756701353,
+            "center_y": -265218.83296383324,
+            "width": 102087.81617774715
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 6,
+      "split": "train",
+      "trajectory_id": "b232bee1-12a7-5c74-ae59-19aba421231d"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.2756856902451936,
+            "center_x": -108432.36440882564,
+            "center_y": 202694.94213919638,
+            "width": 114346.75905332665
+          },
+          {
+            "amplitude": -1.3212284183827663,
+            "center_x": -23690.99180302542,
+            "center_y": -145527.84341599353,
+            "width": 65289.59175110661
+          },
+          {
+            "amplitude": 0.7548695876541246,
+            "center_x": 3087.114236326015,
+            "center_y": 36311.13327575999,
+            "width": 80313.40866554253
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 7,
+      "split": "train",
+      "trajectory_id": "16d91488-f053-5d3a-8d74-cc74d1da4666"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.8187108384855167,
+            "center_x": 193381.5613607868,
+            "center_y": -56940.76451486116,
+            "width": 119300.2263835859
+          },
+          {
+            "amplitude": 0.872748903089353,
+            "center_x": -13539.221726655727,
+            "center_y": -166482.82705564224,
+            "width": 89083.50302175393
+          },
+          {
+            "amplitude": 0.6847315568344149,
+            "center_x": 214478.6311809839,
+            "center_y": -52634.765755228116,
+            "width": 79142.98867031213
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 8,
+      "split": "train",
+      "trajectory_id": "1d5d00ff-81e0-5b2a-804a-8b4cd3618f8b"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.1031481500515619,
+            "center_x": 146260.96301878348,
+            "center_y": 281170.8924516768,
+            "width": 80774.94649981555
+          },
+          {
+            "amplitude": 1.4182376290487624,
+            "center_x": -34558.36702850246,
+            "center_y": -8291.36083716544,
+            "width": 112321.65070505865
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 9,
+      "split": "train",
+      "trajectory_id": "9948da21-b37b-5080-b66e-3a4a3070e1d9"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.3284448852745308,
+            "center_x": 8890.373260896653,
+            "center_y": -252784.6603815273,
+            "width": 76422.49955435308
+          },
+          {
+            "amplitude": 1.3417477243122788,
+            "center_x": 268860.7318686979,
+            "center_y": 191429.77779883466,
+            "width": 102897.0063879622
+          },
+          {
+            "amplitude": -1.0757605479445136,
+            "center_x": 217717.97013861337,
+            "center_y": 288493.4523017908,
+            "width": 83601.84218593668
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 10,
+      "split": "train",
+      "trajectory_id": "59ccea93-f8b0-5edf-a0b2-1dd8b545b565"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.1014983576233575,
+            "center_x": -221862.5007918029,
+            "center_y": 269840.9744629448,
+            "width": 92460.28243420632
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 11,
+      "split": "train",
+      "trajectory_id": "cd280442-98ea-5fe4-952c-0ce719e96c8c"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.6893203845397613,
+            "center_x": -79816.04525045058,
+            "center_y": -143275.0866140171,
+            "width": 117071.41185726835
+          },
+          {
+            "amplitude": -0.6150793821234475,
+            "center_x": 212193.00833413535,
+            "center_y": -294575.94624961907,
+            "width": 101874.51585250316
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 12,
+      "split": "train",
+      "trajectory_id": "6ae30d03-22da-5550-a72c-78a49cd9582f"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.311023398784342,
+            "center_x": -233315.48052019218,
+            "center_y": 246374.7504638299,
+            "width": 112041.63832126325
+          },
+          {
+            "amplitude": -0.5026307536262997,
+            "center_x": 293289.5357996454,
+            "center_y": -129283.25180053592,
+            "width": 98758.5430075906
+          },
+          {
+            "amplitude": 0.5824079438813082,
+            "center_x": 178230.08707758924,
+            "center_y": -51200.1032252415,
+            "width": 109751.36176714388
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 13,
+      "split": "train",
+      "trajectory_id": "7cf1356f-0172-500c-b6a0-e846d1eb2603"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.202739305582055,
+            "center_x": 93353.15957894333,
+            "center_y": 31948.335937765834,
+            "width": 84852.06667588411
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 14,
+      "split": "train",
+      "trajectory_id": "51981625-a2bd-59c0-a313-cd1bca207ae3"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.8444067577928567,
+            "center_x": 40131.71137413534,
+            "center_y": -198286.59672423743,
+            "width": 109869.94112348316
+          },
+          {
+            "amplitude": 0.8453565040758397,
+            "center_x": 276934.1199308691,
+            "center_y": 163776.7211997208,
+            "width": 104532.42572815092
+          },
+          {
+            "amplitude": -1.0551143840748602,
+            "center_x": -267023.8803545865,
+            "center_y": 215750.3991349063,
+            "width": 111408.45248951868
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 15,
+      "split": "train",
+      "trajectory_id": "00ceb72b-55b0-5b56-a61c-d476ff942add"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.5940738254615245,
+            "center_x": 78402.0408822464,
+            "center_y": -308645.55012600904,
+            "width": 88690.92800196022
+          },
+          {
+            "amplitude": 1.3540495315269423,
+            "center_x": 165599.93602453242,
+            "center_y": -172600.14186101872,
+            "width": 113104.78078700457
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 16,
+      "split": "train",
+      "trajectory_id": "7333d2dc-604c-5657-8119-bb9598fc97f9"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.0577445473656921,
+            "center_x": -200847.8788409186,
+            "center_y": -80446.77551056875,
+            "width": 73853.52001430088
+          },
+          {
+            "amplitude": -1.1113431084989807,
+            "center_x": -313027.78661290626,
+            "center_y": -158841.31502587776,
+            "width": 88549.04745014847
+          },
+          {
+            "amplitude": -0.5837366946871432,
+            "center_x": 201763.3147830735,
+            "center_y": -281216.8667229838,
+            "width": 98228.02200101616
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 17,
+      "split": "train",
+      "trajectory_id": "0ecbb387-9f5a-530a-a9a6-cc6d727aa56c"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.7808233280360034,
+            "center_x": 273486.1913954726,
+            "center_y": 37216.15475654497,
+            "width": 104457.80736085189
+          },
+          {
+            "amplitude": 1.076871463502609,
+            "center_x": -225897.77860690834,
+            "center_y": -111516.00645993892,
+            "width": 100437.65291831855
+          },
+          {
+            "amplitude": -1.4073890330483316,
+            "center_x": 259144.76275725482,
+            "center_y": -274332.7227781195,
+            "width": 105491.47204767456
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 18,
+      "split": "train",
+      "trajectory_id": "621dbe5e-c624-5f3e-88b1-779e664d8b9d"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.7738699878982821,
+            "center_x": -101607.19994126412,
+            "center_y": 117014.66163930664,
+            "width": 115922.81396491869
+          },
+          {
+            "amplitude": 1.038699836079593,
+            "center_x": 236564.74184905773,
+            "center_y": 243227.18552772095,
+            "width": 107953.10699725007
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 19,
+      "split": "train",
+      "trajectory_id": "38e10f35-6464-5661-93d0-2b58a96f17aa"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.6217196925764419,
+            "center_x": -58000.30583030131,
+            "center_y": -273528.5921169692,
+            "width": 90363.06903916181
+          },
+          {
+            "amplitude": -1.486288363966747,
+            "center_x": -36853.350251136464,
+            "center_y": 100678.8151463684,
+            "width": 70443.16717001925
+          },
+          {
+            "amplitude": 0.8018739669819622,
+            "center_x": -304462.1415791249,
+            "center_y": 209234.5038938109,
+            "width": 79876.88710499735
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 20,
+      "split": "train",
+      "trajectory_id": "2d270a88-6670-5572-8935-47b705c4d9d5"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.2098011904084252,
+            "center_x": 79306.22081924119,
+            "center_y": 291714.41778579954,
+            "width": 98321.58662640324
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 21,
+      "split": "train",
+      "trajectory_id": "e94b21f6-ba2e-5fd5-a93d-ee31c6225fda"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.5885583732612789,
+            "center_x": -28307.720288740646,
+            "center_y": 339497.8285264734,
+            "width": 75961.24586562956
+          },
+          {
+            "amplitude": 1.3369613232370445,
+            "center_x": 30586.77819963568,
+            "center_y": 59390.810458580265,
+            "width": 111836.24384181219
+          },
+          {
+            "amplitude": 0.9773279527072288,
+            "center_x": -206673.12495857236,
+            "center_y": 216515.96542480262,
+            "width": 67757.77122901956
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 22,
+      "split": "train",
+      "trajectory_id": "fb1d8ac8-55f1-53f9-bef3-33c7e4d850e9"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.6286442243176362,
+            "center_x": 91835.44182271021,
+            "center_y": 211678.10581739922,
+            "width": 100280.20214830269
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 23,
+      "split": "train",
+      "trajectory_id": "ffe76b31-59fd-5b88-afef-6fee339ff68c"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.0747378193271921,
+            "center_x": 41793.4161923551,
+            "center_y": 45356.75194691814,
+            "width": 87284.75236015291
+          },
+          {
+            "amplitude": -0.5864304609909731,
+            "center_x": 175463.34486134065,
+            "center_y": 116198.87443451601,
+            "width": 113076.40921824076
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 24,
+      "split": "train",
+      "trajectory_id": "b22c1ded-f53e-50b5-9024-eb74fa48f76d"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.7165984644628169,
+            "center_x": -368466.42129520205,
+            "center_y": -227097.5993620753,
+            "width": 65017.1619344052
+          },
+          {
+            "amplitude": 1.286934281826405,
+            "center_x": -143150.20367583624,
+            "center_y": 139286.21390979714,
+            "width": 119497.41984000639
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 25,
+      "split": "train",
+      "trajectory_id": "71473705-2c65-5eb1-8c27-e7f3bfc95872"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.5676077581923261,
+            "center_x": 215558.55710217817,
+            "center_y": 33276.52550450608,
+            "width": 77891.97381713541
+          },
+          {
+            "amplitude": -0.6691999157604527,
+            "center_x": -194659.37329597282,
+            "center_y": 3944.079332391906,
+            "width": 99886.98423532619
+          },
+          {
+            "amplitude": -1.4624180281753558,
+            "center_x": -197858.0045074313,
+            "center_y": -161334.15192401648,
+            "width": 83810.31742160258
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 26,
+      "split": "train",
+      "trajectory_id": "3c3a657b-4bb3-5849-bf08-00e619ad68fd"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.6211970988616273,
+            "center_x": 289326.2840825319,
+            "center_y": 194355.42965487624,
+            "width": 82259.78497223374
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 27,
+      "split": "train",
+      "trajectory_id": "ce888f77-166a-551a-b64f-9c47daacd394"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.2657085265575656,
+            "center_x": -245286.68153068688,
+            "center_y": -93023.99900031954,
+            "width": 113669.11247422748
+          },
+          {
+            "amplitude": -1.450879510323719,
+            "center_x": 156045.9308714558,
+            "center_y": -93400.64196105345,
+            "width": 113180.20776014743
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 28,
+      "split": "train",
+      "trajectory_id": "401f3eb1-82ae-5b5e-9cbf-da5e7d3518e4"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.0192340296297115,
+            "center_x": -233074.64602102747,
+            "center_y": -301272.831544797,
+            "width": 92847.72642142972
+          },
+          {
+            "amplitude": 0.8802286018765796,
+            "center_x": -171041.41522663427,
+            "center_y": 188236.57361915504,
+            "width": 86660.5378508012
+          },
+          {
+            "amplitude": -1.4827933264471254,
+            "center_x": 79400.19105355936,
+            "center_y": -189399.22097631704,
+            "width": 98967.74600063174
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 29,
+      "split": "train",
+      "trajectory_id": "52a3bd6e-dbab-5f33-982c-f4e38d5ccf9b"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.5922730165532921,
+            "center_x": 182509.26714067784,
+            "center_y": 237307.05379736138,
+            "width": 88600.88492661962
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 30,
+      "split": "train",
+      "trajectory_id": "26caa33e-2ca5-5916-a1b8-552ac7b8a3d9"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.172730814100364,
+            "center_x": 128654.79413438257,
+            "center_y": -333798.9077795924,
+            "width": 68722.30442988982
+          },
+          {
+            "amplitude": -0.6765301392328813,
+            "center_x": -144173.80127217842,
+            "center_y": 65788.62758399633,
+            "width": 67816.60026175859
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 31,
+      "split": "train",
+      "trajectory_id": "53c4ac6b-ef7e-5be6-bfe1-7f05338f3345"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.87713555396147,
+            "center_x": 114601.36360690935,
+            "center_y": 290002.1830763855,
+            "width": 96472.62225096462
+          },
+          {
+            "amplitude": -1.1712984223160534,
+            "center_x": -21243.840016344213,
+            "center_y": -96454.51697371894,
+            "width": 118175.66353559837
+          },
+          {
+            "amplitude": -1.1012233760065968,
+            "center_x": -56814.80618891193,
+            "center_y": 31600.363770973287,
+            "width": 94840.59255744705
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 32,
+      "split": "validation",
+      "trajectory_id": "71f06a96-f207-53ae-bcf9-3d7c44ea9175"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.4081037749608196,
+            "center_x": 54594.43874056131,
+            "center_y": -86629.56944463254,
+            "width": 96267.01555585061
+          },
+          {
+            "amplitude": 1.043058861944433,
+            "center_x": 9237.95628699765,
+            "center_y": -147956.17417006165,
+            "width": 106600.54893954612
+          },
+          {
+            "amplitude": 0.6129184209408032,
+            "center_x": -353292.58358327905,
+            "center_y": 198767.36593366647,
+            "width": 67726.43662590813
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 33,
+      "split": "validation",
+      "trajectory_id": "a7b9fa55-82d8-5426-b41f-3264c29dd0e0"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.7427423876044142,
+            "center_x": -8719.300208602333,
+            "center_y": 158151.29011049413,
+            "width": 112969.73028487983
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 34,
+      "split": "validation",
+      "trajectory_id": "917eae6a-700b-5659-81f8-9a10035875ae"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.4350068508498128,
+            "center_x": -257706.99666836485,
+            "center_y": -318995.37020321615,
+            "width": 90217.25558568441
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 35,
+      "split": "validation",
+      "trajectory_id": "98d089ea-0ac2-52ae-a947-dddb73b5ed01"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.393832403569878,
+            "center_x": 119390.00402035046,
+            "center_y": 7229.055146317405,
+            "width": 86903.02184046176
+          },
+          {
+            "amplitude": 1.3753544568202907,
+            "center_x": -222658.17350719273,
+            "center_y": -106633.10948552442,
+            "width": 94448.46041952677
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 36,
+      "split": "validation",
+      "trajectory_id": "10b94591-afda-59fa-9ce8-36046f511e57"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.5689932362320225,
+            "center_x": -107614.81271060332,
+            "center_y": -29664.772174632235,
+            "width": 101391.77964413608
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 37,
+      "split": "validation",
+      "trajectory_id": "a53b1b78-ba85-5388-80bd-64b427b6fd7d"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.2203811664111006,
+            "center_x": 296336.7804548893,
+            "center_y": -315452.0277890946,
+            "width": 78735.47224857926
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 38,
+      "split": "validation",
+      "trajectory_id": "2226de9e-fbab-5ca3-9a01-baebc86ac9dd"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.6358742019552884,
+            "center_x": 49201.10011377273,
+            "center_y": 180989.8496596673,
+            "width": 94663.44734135686
+          },
+          {
+            "amplitude": -0.7291638666992661,
+            "center_x": 117441.15815340425,
+            "center_y": 187033.56136682304,
+            "width": 73309.06904846932
+          },
+          {
+            "amplitude": 0.7119863970193987,
+            "center_x": -164060.66384457747,
+            "center_y": -10777.614678545098,
+            "width": 101261.44008521733
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 39,
+      "split": "validation",
+      "trajectory_id": "797cf5d0-0d69-563b-b98a-00ac717d5587"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 1.4419210172345827,
+            "center_x": 111921.29838615557,
+            "center_y": 248136.8774418304,
+            "width": 103137.82262410343
+          },
+          {
+            "amplitude": -0.8383906909861234,
+            "center_x": 146529.27805185487,
+            "center_y": -246348.8446516788,
+            "width": 91162.57476365361
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 40,
+      "split": "test",
+      "trajectory_id": "45e65c9d-4f03-5e16-a821-efd4584385ca"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.6259707467882021,
+            "center_x": 199339.33196992998,
+            "center_y": -85782.2532045205,
+            "width": 107236.26498495796
+          },
+          {
+            "amplitude": 1.1024999084966427,
+            "center_x": 76432.29467509314,
+            "center_y": 145881.80078201724,
+            "width": 93127.50790935027
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 41,
+      "split": "test",
+      "trajectory_id": "a838a9cf-c22d-5519-ac1d-a11c18a41d23"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.3585979199113825,
+            "center_x": -261125.26384061552,
+            "center_y": 306037.65317974024,
+            "width": 89138.31418636287
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 42,
+      "split": "test",
+      "trajectory_id": "47d2e6f9-9a56-5f99-a797-f5b26229ea6a"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.5200295868742169,
+            "center_x": 63646.617890731024,
+            "center_y": -201066.88376764688,
+            "width": 67407.64280014481
+          },
+          {
+            "amplitude": 0.7636921974783747,
+            "center_x": -28137.64416004598,
+            "center_y": 261626.35260464414,
+            "width": 106348.57495002385
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 43,
+      "split": "test",
+      "trajectory_id": "62526658-8413-5081-8f29-75d1a46ad42b"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.9057707278211311,
+            "center_x": -230710.0473103448,
+            "center_y": 244108.44132271945,
+            "width": 79196.21911250251
+          },
+          {
+            "amplitude": -0.8379619489659174,
+            "center_x": 82055.21092712309,
+            "center_y": 320334.2195687621,
+            "width": 73967.4899089086
+          },
+          {
+            "amplitude": -1.4396418119783945,
+            "center_x": 140012.08478470886,
+            "center_y": -312105.43217811536,
+            "width": 87627.04294770556
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 44,
+      "split": "test",
+      "trajectory_id": "b0676b13-af0a-52bf-9b52-6ff40922266b"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -1.263650239801926,
+            "center_x": 6380.06378079718,
+            "center_y": 174233.07803582802,
+            "width": 94067.01298436115
+          },
+          {
+            "amplitude": 1.0947550043408678,
+            "center_x": 96746.36591233744,
+            "center_y": 72000.85033949488,
+            "width": 108786.23174530246
+          },
+          {
+            "amplitude": -1.224163488512768,
+            "center_x": 257640.99174846453,
+            "center_y": -17347.09808176849,
+            "width": 111204.5295653246
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 45,
+      "split": "test",
+      "trajectory_id": "6843dd69-0b30-5cd1-86ff-d3d985ec0056"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": -0.7725697559186377,
+            "center_x": 313806.9252644329,
+            "center_y": -300087.6673607767,
+            "width": 69247.47362664588
+          },
+          {
+            "amplitude": -1.2755717464742617,
+            "center_x": 149494.65196454944,
+            "center_y": 228892.0494154457,
+            "width": 99607.63717003792
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 46,
+      "split": "test",
+      "trajectory_id": "4afd6761-e5f8-5c52-bb6d-414f9471342c"
+    },
+    {
+      "initial_condition": {
+        "bumps": [
+          {
+            "amplitude": 0.9651805382294835,
+            "center_x": 268062.9989568254,
+            "center_y": -102923.8859502961,
+            "width": 106451.78494157843
+          }
+        ],
+        "family": "gaussian_bumps"
+      },
+      "seed": 47,
+      "split": "test",
+      "trajectory_id": "8b5bc312-9be9-5ea7-b7f9-8fb5e1f8097e"
+    }
+  ],
+  "version": "ic_registry_v1"
+}

@@ -1,0 +1,22 @@
+# Smoke version of the backup pair, for the G2 gate.
+#
+# The backup release must be validated at smoke scale before the full stream, and must not
+# delay the primary (docs/AGENT_WORKFLOW.md). Keeps the real 576/48 cadence and the pair's
+# own 12.5206 s time step.
+
+dataset_id: swe_gaussian_64x256_smoke
+pair_id: swe_gaussian_64x256_v1
+resolution_family: swe_gaussian_x4
+
+coarse_nodes: 64
+fine_nodes: 256
+
+discard_steps: 576
+sample_stride: 48
+snapshot_count: 8
+
+output_root: data
+registry_path: data/registries/ic_registry_v1.json
+
+diagnostic_stride: 16
+trajectory_limit: 2

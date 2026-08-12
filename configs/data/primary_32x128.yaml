@@ -1,0 +1,29 @@
+# Primary paired dataset: 32 x 32 coarse -> 128 x 128 fine (D008).
+#
+# Step counts and cadence follow docs/DATASET.md. The shared time step is derived from
+# the fine grid's CFL bound at generation time rather than hard-coded here, so it stays
+# consistent with the resolved config (docs/DATASET.md requires computing the actual CFL
+# bound). For this pair it works out to 25.1398 s, giving a saved interval of 603.355 s
+# and 23.30 h of physical time per trajectory.
+#
+# Payload: 48 trajectories x 128 snapshots x 3 channels, float32 -> 1.195 GiB before
+# compression.
+
+dataset_id: swe_gaussian_32x128_v1
+pair_id: swe_gaussian_32x128_v1
+resolution_family: swe_gaussian_x4
+
+coarse_nodes: 32
+fine_nodes: 128
+
+# Spin-up discard, then 128 evenly spaced saves: last step is 288 + 24 * 127 = 3336.
+discard_steps: 288
+sample_stride: 24
+snapshot_count: 128
+
+output_root: data
+registry_path: data/registries/ic_registry_v1.json
+
+# Evaluate diagnostics every 8th step: dense enough to catch a divergence early, cheap
+# enough not to dominate a 3336-step run.
+diagnostic_stride: 8

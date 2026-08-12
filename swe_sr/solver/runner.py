@@ -72,7 +72,7 @@ def _to_storage_order(state: SolverState) -> np.ndarray:
 def solve(
     config: SolverConfig,
     initial_condition: InitialCondition,
-    sample_steps: Sequence[int],
+    sample_steps: Sequence[int] | np.ndarray,
     *,
     diagnostic_stride: int = 1,
 ) -> SolveResult:
