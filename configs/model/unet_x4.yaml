@@ -1,0 +1,22 @@
+# Residual U-Net x4, per docs/ARCHITECTURE.md.
+#
+# Predicts a residual over endpoint-aligned bicubic interpolation (D006), operating on the
+# already-upsampled grid so it can use multi-scale context at full output resolution. That
+# is the structural contrast with EDSR, which does most of its work on the coarse grid.
+#
+# Roughly 1.93 M parameters at these settings.
+
+name: unet
+architecture: unet
+
+model:
+  # Three encoder stages; two poolings, so the upsampled grid must be divisible by 4.
+  stage_features: [32, 64, 128]
+  blocks_per_stage: 2
+  # SiLU/Swish, following the 2024 dynamic shallow-water super-resolution work. EDSR keeps
+  # ReLU as published; the difference is deliberate and part of what the comparison tests.
+  activation_name: silu
+  # Bias-free input and output convolutions, as docs/ARCHITECTURE.md specifies.
+  bias_free_ends: true
+  scale: 4
+  channels: 3

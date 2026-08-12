@@ -1,0 +1,22 @@
+# EDSR x4 adapted to three normalized physical channels, per docs/ARCHITECTURE.md.
+#
+# Baseline configuration from the pinned EDSR-PyTorch reference (commit 8dba558, MIT), used
+# as documented evidence rather than vendored code. Three deliberate departures, each
+# required here: no RGB MeanShift (dataset normalization replaces it, D019), random
+# initialization rather than natural-image weights, and an outer bicubic residual for parity
+# with the U-Net (D006).
+#
+# Roughly 1.52 M parameters at these settings, comparable to the U-Net's 1.93 M, which keeps
+# the comparison about architecture rather than capacity.
+
+name: edsr
+architecture: edsr
+
+model:
+  blocks: 16
+  features: 64
+  # Residual scaling on each block's branch; what lets a 16-block stack train stably from
+  # random initialization.
+  res_scale: 0.1
+  scale: 4
+  channels: 3

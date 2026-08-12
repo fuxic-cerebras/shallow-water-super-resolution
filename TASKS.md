@@ -48,9 +48,9 @@ so the diagnostics are not vacuously green.
 | D-03 | ready-for-review | PDE/Data | D-02 | Add coordinate/time hashes, streaming storage, immutable manifests, checksums | G2 |
 | D-04 | ready-for-review | PDE/Data | D-03 | Compute separate train-only normalization per pair and full-frame vector augmentation | G2 |
 | V-01 | ready-for-review | Verifier | D-04 | Independently audit both smoke datasets, including negative leakage/alignment tests | G2 |
-| D-05 | unclaimed | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
+| D-05 | ready-for-review | PDE/Data | V-01 | Generate and release full primary dataset | G3 |
 | D-06 | deferred | PDE/Data | D-05 | Benchmark, then stream and release full backup dataset without delaying primary | G3 |
-| V-02 | unclaimed | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
+| V-02 | ready-for-review | Verifier | D-05 | Recompute splits, checksums, times, coordinates, normalization, and diagnostics (primary only while D-06 is deferred) | G3 |
 
 G2 evidence so far: D-01 to D-04 are `ready-for-review`. Both smoke pairs generate with
 zero checksum mismatches, disjoint splits, bit-identical within-pair saved times, and mass
@@ -61,19 +61,48 @@ validation, NOT the D-05 release: its manifest records a `-dirty` commit, so it 
 reproducible from a commit alone, and D-05 still depends on D-04 normalization and the
 V-01 independent audit.
 
+G3 evidence (primary only; backup deferred): the full 48-trajectory primary release is
+generated with clean provenance at commit `c82ce16` and passes all 12 gates of
+`python -m swe_sr.data.validate`, including 384 array checksums recomputed from the arrays
+and a train-only normalization recomputed and matched. Worst relative mass drift 1.067e-14,
+minimum total depth 98.6689 m, 197 frames over 34.86 h, splits disjoint across 48 unique
+IDs.
+
+OUTSTANDING, needs one owner action: the release currently sits at
+`data/staging/{raw,processed}/swe_gaussian_32x128_v1/` rather than the canonical
+`data/{raw,processed}/`. An earlier development run with `-dirty` provenance occupies the
+canonical path and removing it requires approval, and the generator refuses to overwrite a
+release by design. To promote:
+
+    rm -rf data/raw/swe_gaussian_32x128_v1 data/processed/swe_gaussian_32x128_v1
+    mv data/staging/raw/swe_gaussian_32x128_v1 data/raw/
+    mv data/staging/processed/swe_gaussian_32x128_v1 data/processed/
+    rmdir data/staging/raw data/staging/processed data/staging
+
+Nothing downstream is blocked: `docs/AGENT_WORKFLOW.md` has ML working against synthetic
+fixtures until data pass G3, and training is gated on G6 authorization regardless.
+
 G2 acceptance: both smoke pairs independently integrate matching ICs over matching
 domains and exact within-pair saved times. G3 acceptance: immutable manifests pass the
 independent audit. Primary and backup have separate G3 releases.
 
 ## Models and training
 
+G4 evidence: M-01 to M-04 and V-03 are `ready-for-review`. 42 model tests and 16 metric
+tests pass. Both models take one set of weights to `[B,3,32,32] -> [B,3,128,128]` and
+`[B,3,64,64] -> [B,3,256,256]`, every trainable parameter receives a finite gradient at both
+resolutions, and checkpoint reload reproduces inference bitwise. U-Net 1,930,208 parameters
+(7.72 MB), EDSR 1,517,571 (6.07 MB) -- close enough that the comparison is about architecture
+rather than capacity. Zeroing all weights reproduces the bicubic baseline exactly, which is
+what makes any reported gain over bicubic attributable to the learned residual.
+
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
-| M-01 | unclaimed | ML | I-01 | Implement nearest and endpoint-aligned bicubic baselines | G4 |
-| M-02 | unclaimed | ML | R-01,I-01 | Implement clean 2D residual U-Net x4 from documented adaptations | G4 |
-| M-03 | unclaimed | ML | R-01,I-01 | Adapt EDSR x4 to three normalized physical channels | G4 |
-| M-04 | unclaimed | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
-| V-03 | unclaimed | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
+| M-01 | ready-for-review | ML | I-01 | Implement nearest and endpoint-aligned bicubic baselines | G4 |
+| M-02 | ready-for-review | ML | R-01,I-01 | Implement clean 2D residual U-Net x4 from documented adaptations | G4 |
+| M-03 | ready-for-review | ML | R-01,I-01 | Adapt EDSR x4 to three normalized physical channels | G4 |
+| M-04 | ready-for-review | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
+| V-03 | ready-for-review | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
 | T-01 | unclaimed | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
 | T-02 | unclaimed | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
