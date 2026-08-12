@@ -145,6 +145,7 @@ def test_config_hash_changes_with_the_schedule_but_not_the_output_path(
 def test_run_directory_contains_every_required_artifact(
     manifest_path: Path, tmp_path: Path
 ) -> None:
+    """The artifacts a run must produce with only the core dependencies installed."""
     result = train(_config(manifest_path, tmp_path), verbose=False)
     for name in (
         "config.yaml",
@@ -152,11 +153,51 @@ def test_run_directory_contains_every_required_artifact(
         "dataset_manifest.json",
         "metrics.csv",
         "summary.json",
-        "curves.png",
         "checkpoints/best.pt",
         "checkpoints/last.pt",
     ):
         assert (result.run_dir / name).is_file(), f"missing {name}"
+
+
+def test_curves_are_written_when_plotting_is_available(manifest_path: Path, tmp_path: Path) -> None:
+    """curves.png is part of the run directory, but only when matplotlib is installed.
+
+    Asserted conditionally on purpose. `docs/ARCHITECTURE.md` lists curves.png as a run
+    artifact *and* insists plotting is a client of the data rather than a dependency of it, so
+    the write is a guarded optional import. An earlier version of this test asserted the file
+    unconditionally and passed locally, where conda supplies matplotlib, while failing in CI,
+    which installed only the `dev` extra. CI now installs `viz` as well so this path is really
+    covered; the skip exists so a minimal environment reports honestly instead of failing.
+    """
+    pytest.importorskip("matplotlib", reason="plotting is an optional extra (viz)")
+    result = train(_config(manifest_path, tmp_path), verbose=False)
+    curves = result.run_dir / "curves.png"
+    assert curves.is_file(), "curves.png missing despite matplotlib being importable"
+    assert curves.stat().st_size > 0
+
+
+def test_training_succeeds_without_matplotlib(
+    manifest_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A node without matplotlib must still be able to train.
+
+    The negative control for the guarded import: hide matplotlib and confirm the run completes
+    and still writes every required artifact, just without the figure.
+    """
+    import builtins
+
+    real_import = builtins.__import__
+
+    def _blocked(name: str, *args: object, **kwargs: object) -> object:
+        if name.split(".")[0] == "matplotlib":
+            raise ImportError("matplotlib hidden for this test")
+        return real_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(builtins, "__import__", _blocked)
+    result = train(_config(manifest_path, tmp_path), verbose=False)
+    assert (result.run_dir / "metrics.csv").is_file()
+    assert (result.run_dir / "summary.json").is_file()
+    assert not (result.run_dir / "curves.png").exists()
 
 
 def test_run_id_encodes_timestamp_model_config_and_commit(

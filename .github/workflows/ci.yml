@@ -37,7 +37,11 @@ jobs:
           python -m pip install --upgrade pip
           # CPU wheels only; the CUDA build is a large download and never exercised.
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev]"
+          # `viz` as well as `dev`: docs/ARCHITECTURE.md lists curves.png as part of every
+          # run directory, and plotting is a guarded optional import. Without matplotlib
+          # installed, that artifact is silently never produced and CI would pass over a
+          # gap in the documented contract.
+          pip install -e ".[dev,viz]"
 
       # Single source of truth: the same script developers run locally, so CI and local
       # checks cannot drift. It also guards the .gitignore anchoring bug that once hid
