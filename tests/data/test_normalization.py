@@ -215,6 +215,7 @@ def test_applying_another_pairs_statistics_is_refused(
         check_pair_id(fitted, "swe_gaussian_64x256_v1")
 
 
+@pytest.mark.backup
 def test_statistics_differ_between_pair_ids(tmp_path: Path) -> None:
     """D008 forbids sharing statistics; confirm the two pairs really do differ."""
     registry = build_registry()

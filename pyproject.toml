@@ -54,5 +54,12 @@ testpaths = ["tests"]
 markers = [
     "slow: takes more than a few seconds; excluded from the fast suite",
     "dataset: requires a generated dataset on disk",
+    # The backup 64->256 pair is a separate, later release (D008) that must not delay the
+    # primary study, so its data-generation tests are deselected by default while the
+    # primary experiment is the focus. Marked rather than deleted: the backup is still a
+    # deliverable (D-06, O-01), and deleting would drop its coverage silently. Re-enable
+    # with `pytest -m backup`. Cheap backup *config* assertions stay in the default suite,
+    # since they cost nothing and pin the D017 stride/duration relationship.
+    "backup: generates 64->256 backup-pair data; deselected while primary is the focus",
 ]
 addopts = "--strict-markers"

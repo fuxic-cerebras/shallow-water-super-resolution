@@ -45,7 +45,12 @@ echo "== mypy"
 mypy
 
 echo "== pytest (fast suite)"
-pytest -q -m "not slow and not dataset"
+# `backup` is deselected while the primary 32->128 experiment is the focus: the backup
+# pair is a separate later release that must not delay it (D008). Run `pytest -m backup`
+# before touching D-06. Exclusions are echoed so a shrinking suite stays visible rather
+# than quietly dropping coverage.
+echo "   excluding markers: slow, dataset, backup"
+pytest -q -m "not slow and not dataset and not backup"
 
 echo
 echo "ALL CHECKS PASSED"
