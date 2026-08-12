@@ -88,13 +88,21 @@ independent audit. Primary and backup have separate G3 releases.
 
 ## Models and training
 
+G4 evidence: M-01 to M-04 and V-03 are `ready-for-review`. 42 model tests and 16 metric
+tests pass. Both models take one set of weights to `[B,3,32,32] -> [B,3,128,128]` and
+`[B,3,64,64] -> [B,3,256,256]`, every trainable parameter receives a finite gradient at both
+resolutions, and checkpoint reload reproduces inference bitwise. U-Net 1,930,208 parameters
+(7.72 MB), EDSR 1,517,571 (6.07 MB) -- close enough that the comparison is about architecture
+rather than capacity. Zeroing all weights reproduces the bicubic baseline exactly, which is
+what makes any reported gain over bicubic attributable to the learned residual.
+
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
-| M-01 | unclaimed | ML | I-01 | Implement nearest and endpoint-aligned bicubic baselines | G4 |
-| M-02 | unclaimed | ML | R-01,I-01 | Implement clean 2D residual U-Net x4 from documented adaptations | G4 |
-| M-03 | unclaimed | ML | R-01,I-01 | Adapt EDSR x4 to three normalized physical channels | G4 |
-| M-04 | unclaimed | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
-| V-03 | unclaimed | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
+| M-01 | ready-for-review | ML | I-01 | Implement nearest and endpoint-aligned bicubic baselines | G4 |
+| M-02 | ready-for-review | ML | R-01,I-01 | Implement clean 2D residual U-Net x4 from documented adaptations | G4 |
+| M-03 | ready-for-review | ML | R-01,I-01 | Adapt EDSR x4 to three normalized physical channels | G4 |
+| M-04 | ready-for-review | ML | M-02,M-03 | Add generic 32->128 and 64->256 shape/gradient/reload tests and resource metrics | G4 |
+| V-03 | ready-for-review | Verifier | M-01,M-04 | Independently audit model contracts, baselines, gradients, and checkpoint round-trip | G4 |
 | T-01 | unclaimed | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
 | T-02 | unclaimed | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
