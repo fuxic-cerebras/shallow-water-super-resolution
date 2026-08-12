@@ -72,6 +72,10 @@ jobs concurrently without approval from the integration lead.
 - Add or update tests in the same change as behavior.
 - Run the narrowest relevant tests first, then the full fast test suite.
 - Update documentation and task status only after validation passes.
+- At every major milestone, once its verification actually passes, commit the change and
+  merge to `main`. Never accumulate a gate's worth of work into one large final commit.
+  A milestone is a gate (G0-G8) or a completed `TASKS.md` task ID. Run the relevant tests
+  first; if part of a gate fails, commit the passing part and state what is outstanding.
 - If an assumption is unclear, stop and add it to the Open Questions section of
   `docs/PROJECT_SPEC.md` instead of burying it in code.
 

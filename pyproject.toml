@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swe-sr"
+version = "0.1.0"
+description = "Neural spatial super-resolution for a 2D shallow-water solver"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.0",
+    "h5py>=3.11",
+    "pyyaml>=6.0",
+    "torch>=2.6",
+]
+
+[project.optional-dependencies]
+# Plotting is a client of the data, never a dependency of generation or training
+# (docs/ARCHITECTURE.md: data generation must run headlessly).
+viz = ["matplotlib>=3.9"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.setuptools.packages.find]
+include = ["swe_sr*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.mypy]
+python_version = "3.13"
+packages = ["swe_sr"]
+strict = true
+warn_unreachable = true
+# h5py and yaml ship incomplete or absent stubs.
+[[tool.mypy.overrides]]
+module = ["h5py.*", "yaml.*", "matplotlib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "Run the narrowest relevant tests first, then the full fast test suite" (CLAUDE.md).
+# Anything slow or requiring a generated dataset must be marked so `-m "not slow"` is fast.
+markers = [
+    "slow: takes more than a few seconds; excluded from the fast suite",
+    "dataset: requires a generated dataset on disk",
+]
+addopts = "--strict-markers"
