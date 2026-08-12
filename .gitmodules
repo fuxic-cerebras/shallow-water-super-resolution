@@ -1,0 +1,3 @@
+[submodule "references/shallow-water"]
+	path = references/shallow-water
+	url = git@github.com:fuxic-cerebras/shallow-water.git
