@@ -58,7 +58,7 @@ The first study is complete when:
 - split auditing proves that no trajectory appears in more than one split;
 - U-Net and EDSR each produce a best-validation checkpoint and train/validation
   MSE curve;
-- both checkpoints are evaluated on all 1,024 held-out test snapshots;
+- both checkpoints are evaluated on all 1,576 held-out test snapshots;
 - both checkpoints are evaluated on a workload generated after training;
 - nearest-neighbor and bicubic results use the identical test states and metrics;
 - a machine-readable metrics file and a human-readable comparison report exist;

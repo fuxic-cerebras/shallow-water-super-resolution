@@ -435,15 +435,38 @@ def test_shipped_configs_match_the_documented_cadence() -> None:
     """The repo's real configs must encode the docs/DATASET.md schedule."""
     configs = Path("configs/data")
     primary = GenerationConfig.from_yaml(configs / "primary_32x128.yaml")
-    assert (primary.discard_steps, primary.sample_stride, primary.snapshot_count) == (288, 24, 128)
-    assert primary.sample_steps[-1] == 3336
+    assert (primary.discard_steps, primary.sample_stride, primary.snapshot_count) == (288, 24, 197)
+    assert primary.sample_steps[-1] == 4992
     assert primary.pair.fine_config().dt == pytest.approx(25.1398, abs=1e-4)
 
     backup = GenerationConfig.from_yaml(configs / "backup_64x256.yaml")
-    assert (backup.discard_steps, backup.sample_stride, backup.snapshot_count) == (576, 48, 128)
-    assert backup.sample_steps[-1] == 6672
+    assert (backup.discard_steps, backup.sample_stride, backup.snapshot_count) == (576, 48, 197)
+    assert backup.sample_steps[-1] == 9984
     assert backup.pair.fine_config().dt == pytest.approx(12.5206, abs=1e-4)
     assert primary.dataset_id != backup.dataset_id
+
+    # Both releases must yield the same frame count, so a model sees the same number of
+    # samples at either resolution (D017).
+    assert primary.snapshot_count == backup.snapshot_count == 197
+
+
+def test_documented_split_sizes_follow_from_the_snapshot_count() -> None:
+    """The docs/DATASET.md split table must stay consistent with the shipped configs.
+
+    Stale snapshot counts are exactly the kind of thing that ends up in a published table,
+    so these are derived from the config rather than trusted from prose.
+    """
+    primary = GenerationConfig.from_yaml(Path("configs/data/primary_32x128.yaml"))
+    per_trajectory = primary.snapshot_count
+    assert 32 * per_trajectory == 6304
+    assert 8 * per_trajectory == 1576
+    assert 48 * per_trajectory == 9456
+
+    # Raw payload must stay inside the sub-2-GiB target in docs/PROJECT_SPEC.md.
+    bytes_per_pair = 3 * 4 * (32**2 + 128**2)
+    payload_gib = 48 * per_trajectory * bytes_per_pair / 1024**3
+    assert payload_gib == pytest.approx(1.840, abs=0.005)
+    assert payload_gib < 2.0
 
 
 def test_both_pairs_consume_the_same_registry_but_produce_different_manifests(

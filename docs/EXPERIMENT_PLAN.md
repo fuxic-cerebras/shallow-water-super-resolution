@@ -50,7 +50,7 @@ until the MSE-only comparison is complete.
 | Checkpoint criterion | lowest full validation MSE |
 | Primary seed | 20260812 |
 
-Validate on the complete 1,024-frame validation split after every epoch. Save train
+Validate on the complete 1,576-frame validation split after every epoch. Save train
 MSE, validation MSE, per-channel validation MSE, learning rate, throughput, elapsed
 time, and peak accelerator memory.
 
