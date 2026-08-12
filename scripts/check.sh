@@ -36,10 +36,10 @@ tracked=$(git ls-files '*.py' | grep -c -E '^(swe_sr|tests)/' || true)
 echo "== tracked python files under swe_sr/ and tests/: ${tracked}"
 
 echo "== ruff check"
-ruff check swe_sr tests
+ruff check swe_sr tests scripts
 
 echo "== ruff format --check"
-ruff format --check swe_sr tests
+ruff format --check swe_sr tests scripts
 
 echo "== mypy"
 mypy

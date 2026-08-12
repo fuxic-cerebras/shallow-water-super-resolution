@@ -55,3 +55,6 @@ htmlcov/
 
 # Claude Code local overrides (agent/command definitions ARE tracked)
 .claude/settings.local.json
+
+# Rendered animations from scripts/visualize.py (large binaries, regenerable).
+/viz/
