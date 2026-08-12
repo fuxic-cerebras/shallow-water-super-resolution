@@ -81,10 +81,37 @@ the experiment.
 
 ## Open questions
 
-- Which target training device should define the final runtime budget?
+- ~~Which target training device should define the final runtime budget?~~ Answered by
+  D015: the Slurm `cpu` partition at `-c 16` in BF16. No CUDA device is reachable.
 - Should a later study vary physical parameters (`H`, `f_0`, `beta`) as well as
   initial conditions?
 - Should version 2 add a physics-weighted auxiliary loss after the MSE-only baseline
   is established?
 - Should the solver move from wall boundaries to periodic boundaries for turbulence
   studies, or remain faithful to the current closed-basin workload?
+
+### Discretization ambiguities found during G0
+
+These are recorded rather than resolved. None blocks version 1, but each bounds what
+the results can claim.
+
+- **Wall position is ambiguous in the reference solver.** Under a strict Arakawa
+  C-grid reading of `MODEL_NOTES.md`, the no-flow walls sit at `+/-(L/2 + dx/2)`,
+  which makes the 32-point basin 2.4 percent wider than the 128-point basin
+  (1.0323e6 m against 1.0079e6 m). `MODEL_NOTES.md` instead asserts walls at
+  `+/-L/2`. D011 sidesteps the consequence by placing every channel on the `eta`
+  grid, whose extent is resolution independent, but the underlying discretization is
+  genuinely ambiguous and the LR and HR runs are therefore not solving on exactly the
+  same basin.
+- **Saved times differ across resolution pairs by 0.392 percent.** The saved interval
+  is 603.355 s for the primary pair and 600.989 s for the backup pair, because the
+  spacing ratio is `127/255` rather than exactly `1/2`. Within a pair, LR and HR saved
+  times are bit-identical as `docs/DATASET.md` requires. The paired cross-resolution
+  bootstrapping described in `docs/DATASET.md` therefore compares states at slightly
+  different physical times, which must be stated wherever such a comparison is
+  reported.
+- **Wide initial conditions are center-biased.** The `2 sigma` wall margin with
+  `sigma` up to 120 km confines bump centers to `+/-260 km` of a `+/-500 km` domain,
+  so wide bumps cannot be placed off-center and the realized center distribution is
+  not uniform over the domain. Record the realized `sigma/dx` and center
+  distributions in the IC registry so the coverage is auditable.

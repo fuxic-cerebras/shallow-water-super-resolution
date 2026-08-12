@@ -1,8 +1,9 @@
 # Shallow-Water Super-Resolution
 
 This repository develops neural spatial super-resolution for the 2D shallow-water
-solver in `swe.py`. A coarse numerical solution is the model input; an independently
-integrated fine-grid solution at the same physical time is the target.
+solver in `references/shallow-water/swe.py`. A coarse numerical solution is the model
+input; an independently integrated fine-grid solution at the same physical time is the
+target.
 
 ## Read first
 
@@ -17,8 +18,10 @@ Before changing code, read these files in order:
 7. `docs/RESEARCH_MATRIX.md`
 8. `TASKS.md`
 
-`MODEL_NOTES.md` is the source of truth for the existing solver's equations and
-discretization. `docs/DECISIONS.md` records project-level choices.
+`references/shallow-water/MODEL_NOTES.md` is the source of truth for the existing
+solver's equations and discretization. It lives in a submodule pinned at commit
+`a8457df`; run `git submodule update --init` if the directory is empty.
+`docs/DECISIONS.md` records project-level choices.
 
 ## Non-negotiable rules
 
@@ -38,8 +41,12 @@ discretization. `docs/DECISIONS.md` records project-level choices.
 - Never invent experiment results. Mark planned numbers as targets and measured
   numbers as results with the command, config, seed, and checkpoint that produced them.
 - Do not commit generated datasets, model checkpoints, or experiment logs to Git.
-- Preserve the original `swe.py` behavior while extracting reusable solver code.
-  Add regression tests before changing numerical kernels.
+- Preserve the original `references/shallow-water/swe.py` behavior while extracting
+  reusable solver code. Add regression tests before changing numerical kernels. The
+  submodule is read-only; never edit it.
+- Treat `[eta, u, v]` as an Arakawa C-grid in the raw layer and as cell-centered
+  fields in the processed layer, per D011. Models and metrics consume processed,
+  cell-centered fields only.
 - Record any change to the grid ratio, fields, split seeds, loss definition, or
   evaluation protocol in `docs/DECISIONS.md`.
 - Treat 32 -> 128 as the primary dataset and 64 -> 256 as a separately generated

@@ -3,6 +3,8 @@
 ## Proposed repository layout
 
 ```text
+references/
+  shallow-water/        # submodule, pinned at a8457df, read-only
 configs/
   data/{primary_32x128,backup_64x256}.yaml
   model/{unet_x4,edsr_x4}.yaml
@@ -25,8 +27,11 @@ runs/                 # ignored by Git
 data/                 # ignored by Git
 ```
 
-The current `swe.py` remains a thin demonstration entry point. Numerical kernels move
-behind an importable API only after regression tests capture current behavior.
+The reference `references/shallow-water/swe.py` remains an untouched demonstration
+script inside its pinned submodule (D010); it is not importable from the repository
+root and is never edited. Numerical kernels move behind the importable `swe_sr.solver`
+API only after regression tests capture current behavior, with the fixtures produced by
+executing the submodule script under patched globals.
 
 ## Shared input/output contract
 

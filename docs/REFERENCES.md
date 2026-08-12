@@ -2,8 +2,26 @@
 
 ## Solver and implementation references
 
+All commits and licenses below were verified against the pinned sources on 2026-08-12
+as part of R-01. The table is the authoritative pin list; prose sections add detail.
+
+| Repository | Pinned commit | License | Role |
+|---|---|---|---|
+| `shallow-water` | `a8457df886cec74e2a02652280d2f00de0804dfc` | **none found** | solver, submodule at `references/shallow-water` |
+| `space_time_pde` | `5e355b0434baf1757d071ce993b84073c8426223` | MIT (c) 2020 Chiyu Max Jiang, Soheil Esmaeilzadeh | U-Net / implicit-decoder evidence |
+| `climatereconstructionAI` | `deb8582a8c390e4a72444f1787dce616f93d4d73` | BSD 3-Clause | training/validation workflow evidence |
+| `EDSR-PyTorch` | `8dba5581a7502b92de9641eb431130d6c8ca5d7f` | MIT (c) 2018 Sanghyun Son | residual-block and pixel-shuffle evidence |
+
+> **Licensing risk.** The pinned `shallow-water` fork contains no `LICENSE`, `COPYING`,
+> or `NOTICE` file at its root, so its terms are unstated. This is why D010 tracks it
+> as a submodule rather than vendoring the files: nothing from it is redistributed by
+> this repository. Before any external release of derived solver code, confirm the
+> upstream provenance and terms with the repository owner. Do not assume a license.
+
 - [Shallow-water solver](https://github.com/fuxic-cerebras/shallow-water) - source
-  `swe.py`, numerical scheme, physical parameters, and existing model notes.
+  `swe.py`, numerical scheme, physical parameters, and existing model notes. Tracked
+  as a submodule at `references/shallow-water`; see D010. `MODEL_NOTES.md` lives here
+  and is the source of truth for the equations and discretization.
 - [EDSR-PyTorch fork](https://github.com/fuxic-cerebras/EDSR-PyTorch) - reference
   implementation for residual blocks and pixel-shuffle x4 upsampling. The project
   adapts it from RGB images to normalized physical channels and does not reuse RGB
