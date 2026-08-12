@@ -180,7 +180,8 @@ def plot_decorrelation(
     axis.set_ylabel("normalized macro MSE on the validation split")
     axis.set_title(
         "Coarse and fine solves decorrelate with lead time\n"
-        "independent integrations (D002) drift apart, so late frames are not recoverable",
+        "independent integrations (D002) drift apart; late frames are progressively "
+        "less recoverable",
         fontsize=11,
     )
     axis.grid(alpha=0.3)
@@ -193,7 +194,7 @@ def plot_decorrelation(
         arrowprops={"arrowstyle": "->", "lw": 0.8},
     )
     axis.annotate(
-        "beyond ~29 h bicubic is no better\nthan ignoring the input",
+        "only beyond ~30 h does bicubic reach\nmean-predictor level; its split mean is 0.47",
         xy=(hours[-1], series["bicubic"][-1]),
         xytext=(hours[-1] - 17, 1.45),
         fontsize=8,
