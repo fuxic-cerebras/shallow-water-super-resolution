@@ -1,0 +1,16 @@
+# Smoke stage (docs/EXPERIMENT_PLAN.md): two trajectories, eight frames, a couple of steps.
+#
+# Purpose is plumbing only -- shapes, gradients, checkpoints, run-directory provenance -- so it
+# runs locally in seconds and proves nothing about accuracy. It deliberately keeps the real
+# optimizer, loss, precision path, and checkpoint-selection rule, so those are exercised rather
+# than bypassed by a shortcut that would make the smoke run unrepresentative.
+
+stage: smoke
+max_train_trajectories: 2
+max_validation_trajectories: 2
+max_frames_per_trajectory: 8
+batch_size: 4
+max_epochs: 2
+max_steps: 4
+warmup_steps: 1
+early_stopping_patience: 15

@@ -1,0 +1,18 @@
+# Pilot stage (docs/EXPERIMENT_PLAN.md): eight training trajectories, two validation,
+# ten epochs or 2,000 steps.
+#
+# Purpose is measurement, not accuracy: estimate memory and wall time, confirm validation loss
+# falls, and choose a safe batch size without changing the architecture. Its numbers replace
+# the analytic projection in the plan.
+#
+# Keeps the production batch size of 8, the full optimizer schedule, and BF16, because a pilot
+# that changed any of those would not project the full run it is meant to project.
+
+stage: pilot
+max_train_trajectories: 8
+max_validation_trajectories: 2
+batch_size: 8
+max_epochs: 10
+max_steps: 2000
+warmup_steps: 500
+early_stopping_patience: 15

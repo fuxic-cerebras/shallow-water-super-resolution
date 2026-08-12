@@ -32,6 +32,7 @@ from swe_sr.data.storage import (
     read_fields,
     read_metadata,
     read_times,
+    resolve_array_dir,
     verify_trajectory_checksums,
 )
 
@@ -105,12 +106,7 @@ def validate_dataset(manifest_path: Path, *, check_normalization: bool = True) -
     manifest_path = Path(manifest_path)
     manifest = load_manifest(manifest_path)
 
-    # Arrays live under raw/, whether the manifest handed to us is the raw or processed one.
-    raw_dir = manifest_path.parent
-    if not (raw_dir / "trajectories").is_dir():
-        candidate = raw_dir.parent.parent / "raw" / manifest.dataset_id
-        if (candidate / "trajectories").is_dir():
-            raw_dir = candidate
+    raw_dir = resolve_array_dir(manifest_path, manifest.dataset_id)
 
     report = ValidationReport(dataset_id=manifest.dataset_id, manifest_path=manifest_path)
 
