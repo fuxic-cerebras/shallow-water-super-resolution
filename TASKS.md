@@ -145,8 +145,8 @@ config, smoke config, and the D008/D017 decisions all stand.
 
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
-| E-01 | unclaimed | ML | T-03 | Evaluate baselines/models on all held-out primary test trajectories | G7 |
-| E-02 | unclaimed | PDE/Data | I-02 | Generate frozen `fresh_id` and `ring_ood` evaluation workloads | G7 |
+| E-01 | ready-for-review | ML | T-03 | Evaluate baselines/models on all held-out primary test trajectories | G7 |
+| E-02 | ready-for-review | PDE/Data | I-02 | Generate frozen `fresh_id` and `ring_ood` evaluation workloads | G7 |
 | E-03 | unclaimed | ML | E-01,E-02 | Evaluate fresh workloads without tuning and create tables/plots | G7 |
 | V-05 | unclaimed | Verifier | E-03 | Recompute selected metrics and audit leakage, units, aggregation, and claims | G7 |
 | I-03 | unclaimed | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
