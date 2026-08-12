@@ -41,8 +41,12 @@ from swe_sr.metrics.aggregate import (
     aggregate_by_trajectory,
     paired_bootstrap_difference,
 )
-from swe_sr.metrics.field import field_metrics
-from swe_sr.metrics.physics import PhysicalParameters, physics_metrics
+from swe_sr.metrics.field import CHANNEL_NAMES, per_sample_relative_l2
+from swe_sr.metrics.physics import (
+    PhysicalParameters,
+    physics_metrics,
+    relative_mass_error,
+)
 from swe_sr.models import build_baseline, build_model_from_config, resource_summary
 from swe_sr.training.config import REPO_ROOT, git_commit
 
@@ -102,8 +106,12 @@ def _evaluate_method(
     model.eval()
     snapshots: list[SnapshotMetric] = []
     lead_time_values: dict[float, list[float]] = {}
-    normalized_totals: dict[str, list[float]] = {}
     physical_totals: dict[str, list[float]] = {}
+    mse_totals = torch.zeros(3, dtype=torch.float64)
+    max_abs = torch.zeros(3, dtype=torch.float64)
+    mse_count = 0
+    rel_l2_by_trajectory: dict[str, dict[str, list[float]]] = {}
+    mass_by_trajectory: dict[str, list[float]] = {}
     elapsed = 0.0
     frames = 0
 
@@ -132,8 +140,25 @@ def _evaluate_method(
             hours = float(sample["time"]) / 3600.0
             lead_time_values.setdefault(hours, []).append(float(per_sample[offset]))
 
-        for key, value in field_metrics(prediction, fine).items():
-            normalized_totals.setdefault(key, []).append(value)
+        # Per-channel MSE accumulates as a sample-weighted sum, which is exact regardless of
+        # batching. Ratio metrics must NOT be averaged per batch: relL2 is a norm ratio, so a
+        # mean over batches depends on batch size, which is an implementation detail rather
+        # than a property of the data. Independent recomputation caught exactly that, with the
+        # reported bicubic relL2 off by 7 percent. Ratios are therefore accumulated per
+        # snapshot and reduced by the documented aggregation protocol below.
+        channel_mse = ((prediction - fine) ** 2).mean(dim=(0, 2, 3)).double()
+        mse_totals += channel_mse * coarse.shape[0]
+        mse_count += coarse.shape[0]
+        worst = (prediction - fine).abs().amax(dim=(0, 2, 3)).double()
+        max_abs = torch.maximum(max_abs, worst)
+
+        sample_rel_l2 = per_sample_relative_l2(prediction, fine).double()
+        for offset, sample in enumerate(samples):
+            trajectory = str(sample["trajectory_id"])
+            for index, channel in enumerate(CHANNEL_NAMES):
+                rel_l2_by_trajectory.setdefault(channel, {}).setdefault(trajectory, []).append(
+                    float(sample_rel_l2[offset, index])
+                )
         # Physical diagnostics are computed after de-normalization (docs/ARCHITECTURE.md).
         physical_prediction = torch.from_numpy(
             normalization.invert(prediction.numpy()).astype(np.float32)
@@ -141,13 +166,35 @@ def _evaluate_method(
         physical_fine = torch.from_numpy(normalization.invert(fine.numpy()).astype(np.float32))
         for key, value in physics_metrics(physical_prediction, physical_fine, parameters).items():
             physical_totals.setdefault(key, []).append(value)
+        # Mass error is a per-sample ratio, so it follows the protocol too.
+        sample_mass = relative_mass_error(physical_prediction, physical_fine, parameters).double()
+        for offset, sample in enumerate(samples):
+            mass_by_trajectory.setdefault(str(sample["trajectory_id"]), []).append(
+                float(sample_mass[offset])
+            )
 
     aggregate = aggregate_by_trajectory(snapshots, metric="macro_mse_normalized", seed=seed)
+
+    # Reduce ratio metrics by the documented protocol: within-trajectory mean, then equal
+    # weight across trajectories. Batch-size independent by construction.
+    def _protocol(by_trajectory: dict[str, list[float]]) -> float:
+        return float(np.mean([float(np.mean(v)) for v in by_trajectory.values()]))
+
+    per_channel_mse_values = (mse_totals / max(mse_count, 1)).numpy()
+    normalized = {"mse_macro": float(per_channel_mse_values.mean())}
+    for index, channel in enumerate(CHANNEL_NAMES):
+        normalized[f"mse_{channel}"] = float(per_channel_mse_values[index])
+        normalized[f"rmse_{channel}"] = float(np.sqrt(per_channel_mse_values[index]))
+        normalized[f"rel_l2_{channel}"] = _protocol(rel_l2_by_trajectory.get(channel, {}))
+        normalized[f"max_abs_{channel}"] = float(max_abs[index])
+    physical = {k: float(np.mean(v)) for k, v in physical_totals.items()}
+    physical["relative_mass_error"] = _protocol(mass_by_trajectory)
+
     return MethodResult(
         name=name,
         parameters=int(resource_summary(model)["trainable_parameters"]),
-        normalized_metrics={k: float(np.mean(v)) for k, v in normalized_totals.items()},
-        physical_metrics={k: float(np.mean(v)) for k, v in physical_totals.items()},
+        normalized_metrics=normalized,
+        physical_metrics=physical,
         aggregate=aggregate.to_dict(),
         by_lead_time={h: float(np.mean(v)) for h, v in lead_time_values.items()},
         trajectory_means=aggregate.trajectory_means,
