@@ -149,7 +149,26 @@ config, smoke config, and the D008/D017 decisions all stand.
 | E-02 | ready-for-review | PDE/Data | I-02 | Generate frozen `fresh_id` and `ring_ood` evaluation workloads | G7 |
 | E-03 | ready-for-review | ML | E-01,E-02 | Evaluate fresh workloads without tuning and create tables/plots | G7 |
 | V-05 | ready-for-review | Verifier | E-03 | Recompute selected metrics and audit leakage, units, aggregation, and claims | G7 |
-| I-03 | unclaimed | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
+| I-03 | in-progress | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
+
+G8 evidence, clean-install reproduction (verified from a fresh clone of the repository with
+`--recurse-submodules`, a fresh venv, and `pip install -e ".[dev]"`):
+
+- all six entry points documented in `CLAUDE.md` exist and respond;
+- `scripts/check.sh` exits 0 from the clean install: 309 tests, ruff, ruff format, strict mypy;
+- `python -m swe_sr.data.generate --config configs/data/primary_32x128_smoke.yaml` runs
+  end-to-end and reproduces the **identical** IC registry hash
+  `976e3a577a25a633c6a2625263f23e60482768965029805a5efd16be97ab7c8c`, so the dataset is
+  reproducible from source rather than merely regenerable;
+- `python -m swe_sr.data.validate` passes 12/12 gates on what that produced.
+
+Limitation stated rather than glossed: the venv used `--system-site-packages` so torch was
+reused rather than downloaded, since a full fresh torch install is a 200 MB download that CI
+already covers. Packaging, imports, entry points, and the documented commands were exercised
+fresh; only the torch wheel resolution was not.
+
+I-03 remains `in-progress`, not complete. Sign-off requires the results it would sign off on,
+and those depend on the outstanding lead-time decision recorded under G5.
 
 ## Optional follow-ups
 
