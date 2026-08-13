@@ -143,6 +143,14 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
         "`mass err` is a dimensionless relative error on de-normalized SI fields; `ms/frame` is "
         "wall-clock inference time on the evaluating host.",
         "",
+        "**`ms/frame` is not a controlled cross-run comparison.** Each model's row comes from its "
+        "own evaluation, run on a shared host at a different time, so the column reflects host "
+        "load as well as model cost. The bicubic row is the control: it is identical work in "
+        "every run, so the spread across runs of *that* row bounds how much of any model-to-model "
+        "difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` "
+        "throughput, which is measured within a run over 30,000 steps on a fixed 16-thread "
+        "allocation: 79.7 against 42.0 samples/s median, so U-Net costs about **1.9x** EDSR.",
+        "",
         "Reference: normalized channels have unit variance, so **predicting the channel mean "
         "scores 1.0**. A method near 1.0 carries no information about the target.",
         "",
@@ -187,6 +195,7 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
 
     lines += _lead_time_section(available)
     lines += _fresh_section(run_dirs)
+    lines += _figure_section()
     lines += [
         "",
         "## Limitations",
@@ -205,6 +214,44 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
         "basin. No claim of physical generalization beyond it is made.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _figure_section() -> list[str]:
+    """Pointers to the figures, which are not committed.
+
+    `viz/` is gitignored, so a reader who clones the repository finds no images. Naming the
+    regeneration command and what each panel shows is the only way the figures are reachable
+    from the report at all. This section is static text rather than derived from the artifacts,
+    which is why it states filenames and axes and never a measured value.
+    """
+    return [
+        "",
+        "## Figures",
+        "",
+        "Not committed — `viz/` is gitignored. Regenerate from the frozen checkpoints:",
+        "",
+        "```bash",
+        "python scripts/plot_final.py --runs runs/<edsr-run> runs/<unet-run>",
+        "```",
+        "",
+        "| File | Contents |",
+        "|---|---|",
+        "| `viz/final_curves.png` | three panels: train and validation loss against optimizer "
+        "step; validation loss against wall-clock minutes; per-channel validation MSE. Bicubic "
+        "is drawn as a horizontal level, not a curve, because it does not train. |",
+        "| `viz/qualitative.png` | `eta` fields at four lead times (about 2, 13, 24 and 34.9 h) "
+        "for coarse input, each model, and the fine target. Colour limits are shared across a "
+        "row and taken from the **target**, so a smoother prediction cannot look better by "
+        "being autoscaled to its own narrower range. |",
+        "| `viz/qualitative_error.png` | signed error fields for the same frames, each panel "
+        "labelled with its own MSE, limits shared within a row. |",
+        "| `viz/qualitative.gif` | the same comparison animated over the test trajectory, with "
+        "a lead-time MSE trace that advances with the frame. |",
+        "",
+        "Nearest-neighbour is omitted from all four. It scores 0.4301 against bicubic's 0.4295, "
+        "so its curve would sit under bicubic's and its fields are visually indistinguishable at "
+        "this scale; the number is in the comparison table above where it can be read exactly.",
+    ]
 
 
 def _lead_time_section(available: Sequence[tuple[Path, dict[str, Any]]]) -> list[str]:

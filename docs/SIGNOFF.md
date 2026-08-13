@@ -25,9 +25,17 @@ failed, and the exceptions are scope and environment limits, not failures.
 1. **Can either network beat bicubic?** Yes. U-Net 0.0400 and EDSR 0.0830 against bicubic 0.4295
    normalized macro MSE; paired bootstrap intervals `[-0.4920, -0.2805]` and `[-0.4334, -0.2514]`
    both exclude zero.
-2. **Does U-Net outperform EDSR?** Yes in distribution, by 2.1x, for 1.27x parameters and 2.2x
-   inference cost. Note a 2,000-step pilot showed them tied at 0.303 and 0.307, so this required
+2. **Does U-Net outperform EDSR?** Yes in distribution, by 2.1x, for 1.27x parameters and about
+   1.9x compute. Note a 2,000-step pilot showed them tied at 0.303 and 0.307, so this required
    the full 30,000 steps to establish.
+
+   *Corrected 2026-08-13.* This read "2.2x inference cost", from the `ms/frame` column of two
+   separate evaluations. That column is not a controlled cross-run comparison: the runs were
+   evaluated on a shared host at different times, and the bicubic control — identical work in
+   both — reads 0.2 against 0.3 ms/frame, so the U-Net evaluation's host was measurably more
+   loaded. The ratio now quoted is within-run training throughput over 30,000 steps on a fixed
+   16-thread allocation, 79.7 against 42.0 samples/s median. The accuracy conclusion is
+   unaffected; only the cost ratio was contaminated.
 3. **Are gains consistent across channels?** Yes. U-Net relL2 is 0.1951 / 0.2149 / 0.2135 for
    `eta` / `u` / `v`; the velocity channels are within about 10% of elevation, so no channel is
    carried by the others.

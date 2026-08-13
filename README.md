@@ -33,8 +33,9 @@ Normalized channels have unit variance, so predicting the channel mean scores ex
 
 Three findings beyond the headline:
 
-- **U-Net beats EDSR by 2.1x** in distribution, for 1.27x the parameters and 2.2x the inference
-  cost. A 2,000-step pilot had them tied, so this only emerged at the full 30,000 steps.
+- **U-Net beats EDSR by 2.1x** in distribution, for 1.27x the parameters and about 1.9x the
+  compute — 79.7 against 42.0 samples/s median over 30,000 steps on a fixed 16-thread
+  allocation. A 2,000-step pilot had them tied, so this only emerged at the full 30,000 steps.
 - **Lower pixel error does not imply better physics.** U-Net improves relative mass error over
   bicubic (0.0347 against 0.0392) while EDSR makes it *worse* (0.0540) despite beating bicubic
   fivefold on MSE.
@@ -66,7 +67,11 @@ python -m swe_sr.report         --runs runs/<edsr-run> runs/<unet-run> --out doc
 python scripts/verify_independent.py --run-dir runs/<run-id>  # recomputes metrics from arrays
 python scripts/visualize.py --seed 0 --all                    # animations via reference viz_tools
 python scripts/plot_pilot.py --runs runs/<run> ...            # curves and the lead-time figure
+python scripts/plot_final.py --runs runs/<edsr-run> runs/<unet-run>   # the final result figures
 ```
+
+The figures land in `viz/`, which is gitignored — they are regenerated from the frozen
+checkpoints rather than committed. `docs/RESULTS.md` lists what each one shows.
 
 Training on the Cerebras Slurm CPU partition (D015 — no CUDA device is reachable):
 
