@@ -116,17 +116,32 @@ falling monotonically. EDSR 0.1134 s/step, 515 MB peak RSS, best validation 0.30
 full 30,000-step runs: EDSR 0.95 h, U-Net 1.65 h, 2.59 h combined, well inside the 8 h per
 model envelope in `docs/EXPERIMENT_PLAN.md`.
 
-BLOCKING FINDING before G6, a design consequence rather than a defect. Bicubic scores 1.019
-normalized macro MSE on the validation split, which is what predicting the channel mean
-scores. Stratified by lead time, bicubic MSE grows monotonically: 0.008 at 2.0 h, 0.124 at
-8.7 h, 0.305 at 15.4 h, 0.563 at 22.1 h, 1.082 at 32.2 h. The independent coarse and fine
-integrations that D002 requires progressively decorrelate, so at late times the coarse state
-no longer determines the fine realization and the mapping is not recoverable in principle.
-Both models reach about 0.30, a real 3.3x gain over bicubic, but part of that is likely
-learning to hedge toward the conditional mean where the target is unpredictable. Extending
-trajectories to 4,992 steps (D017) added exactly the frames where the pair is least related.
-Awaiting an owner decision -- restrict the time range, report stratified by lead time, or
-revisit D002/D003 -- before full training proceeds.
+LEAD-TIME FINDING (revised after the full diagnostic run; two earlier readings retracted).
+
+The durable fact: the independent coarse and fine integrations D002 requires progressively
+decorrelate, so baseline error grows monotonically with lead time. Measured on the full
+eight-trajectory validation split, bicubic goes 0.008 at 2.0 h, 0.105 at 8.0 h, 0.442 at
+18.1 h, 1.117 at 34.2 h. Beyond roughly 30 h the coarse state carries little information
+about the specific fine realization, so error there is not recoverable by any method. Any
+single aggregate therefore summarizes a mixture of a well-posed and a partly unpredictable
+regime, which is why every report stratifies by lead time.
+
+RETRACTED #1: an earlier note here claimed bicubic scores 1.019, equal to predicting the
+channel mean. That came from two of eight validation trajectories. The full-split value is
+0.468, median 0.341, trajectory-level 95% CI [0.220, 0.736]. Bicubic reaches mean-predictor
+level only beyond about 30 h, not overall.
+
+RETRACTED #2: an earlier note claimed full training does not improve short-lead-time error,
+read off a log-scale plot at epoch 11 of 38. The completed 30,000-step EDSR run shows the
+opposite. Improvement from epoch 1 to final was largest at the shortest lead time: 0.2502 to
+0.0535 at 2.0 h, a 78.6 percent reduction, against a mean of 42.9 percent across all lead
+times. The crossover where the model overtakes bicubic moved from about 9 h to about 6 h. A
+residual deficit below 6 h remains real -- 0.0535 against bicubic's 0.0080 at 2.0 h -- but it
+narrowed from 31x to 6.7x and was still falling when the step cap hit.
+
+Consequence for the pending decision: conditioning the model on lead time is now an
+optimization rather than a fix for a broken objective. Stratified reporting appears
+sufficient. Still awaiting an owner decision before I-02 freezes anything.
 
 Backup 64->256 training is a later scaling task. It uses separate configs, checkpoints,
 normalization, and a newly approved compute budget.
