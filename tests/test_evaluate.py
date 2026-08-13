@@ -19,7 +19,7 @@ from swe_sr.data.generate import GenerationConfig, generate_dataset
 from swe_sr.data.registry import build_registry
 from swe_sr.evaluate import BASELINE_NAMES, evaluate_run, render_table
 from swe_sr.train import train
-from swe_sr.training.config import TrainingConfig
+from swe_sr.training.config import TrainingConfig, model_config_for_run
 
 DATA = GenerationConfig(
     dataset_id="test_eval",
@@ -241,3 +241,58 @@ def test_trajectory_means_are_serialized_for_cross_run_paired_tests(report: dict
         assert recomputed == pytest.approx(
             method["aggregate_macro_mse_normalized"]["mean"], rel=1e-12
         )
+
+
+# -- The architecture a run is evaluated with (D022) -----------------------------------
+
+
+def test_evaluation_rebuilds_the_architecture_the_run_recorded(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """A direct-prediction run must not be evaluated as a residual model, or vice versa.
+
+    This is a regression test for a trap the D022 ablation created. Evaluation used to
+    reconstruct the model config from the run's model *name* as `configs/model/<name>_x4.yaml`.
+    The two ablation arms have identical parameter shapes, so `load_state_dict` against the wrong
+    arm succeeds silently and every reported metric then describes a model that was never
+    trained -- a wrong number with no error anywhere. `model_config_for_run` reads the recorded
+    path instead. Here the run is trained with the direct arm and the check is that evaluation
+    reports the direct model, whose forward pass adds no bicubic path.
+    """
+    root = tmp_path_factory.mktemp("eval_direct")
+    manifest = generate_dataset(
+        replace(DATA, dataset_id="test_eval_direct"),
+        registry=build_registry(),
+        output_root=root,
+        verbose=False,
+    )
+    manifest_path = root / "processed" / manifest.dataset_id / "manifest.json"
+    config = replace(
+        TrainingConfig(),
+        model_config="configs/model/edsr_direct_x4.yaml",
+        manifest=str(manifest_path),
+        run_root=str(root / "runs"),
+        stage="smoke",
+        batch_size=2,
+        max_epochs=1,
+        max_steps=4,
+        warmup_steps=1,
+    )
+    run_dir = train(config, verbose=False).run_dir
+    assert "edsr_direct" in run_dir.name, "the run ID must carry the ablation model name"
+
+    report = evaluate_run(run_dir, split="test", seed=1)
+    assert report["model"] == "edsr_direct"
+    assert "edsr_direct" in report["methods"]
+    # And the resolver itself points at the recorded config, not the name convention.
+    assert model_config_for_run(run_dir).name == "edsr_direct_x4.yaml"
+
+
+def test_the_resolver_falls_back_for_runs_without_a_recorded_config(tmp_path: Path) -> None:
+    """Runs written before `model_config` was recorded must still resolve."""
+    run_dir = tmp_path / "20260101T000000Z_edsr_deadbeef_deadbeef"
+    run_dir.mkdir()
+    (run_dir / "summary.json").write_text(json.dumps({"model": "edsr"}))
+    assert model_config_for_run(run_dir).name == "edsr_x4.yaml"
+    (run_dir / "config.yaml").write_text("model_config: configs/model/unet_direct_x4.yaml\n")
+    assert model_config_for_run(run_dir).name == "unet_direct_x4.yaml"

@@ -47,6 +47,7 @@ from swe_sr.data.manifest import load_manifest
 from swe_sr.data.normalization import Normalization
 from swe_sr.data.storage import resolve_array_dir
 from swe_sr.models import build_baseline, build_model_from_config
+from swe_sr.training.config import model_config_for_run
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -74,7 +75,7 @@ def analyze(
         normalization=normalization,
     )
     summary = json.loads((run_dir / "summary.json").read_text())
-    name, model = build_model_from_config(REPO_ROOT / f"configs/model/{summary['model']}_x4.yaml")
+    name, model = build_model_from_config(model_config_for_run(run_dir))
     model.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
     model.eval()
     bicubic = build_baseline("bicubic")

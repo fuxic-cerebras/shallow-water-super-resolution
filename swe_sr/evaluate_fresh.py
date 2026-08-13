@@ -41,7 +41,7 @@ from swe_sr.models import build_baseline, build_model_from_config
 from swe_sr.solver.config import ResolutionPair
 from swe_sr.solver.diagnostics import assert_admissible
 from swe_sr.solver.runner import sample_schedule, solve
-from swe_sr.training.config import REPO_ROOT, git_commit
+from swe_sr.training.config import REPO_ROOT, git_commit, model_config_for_run
 
 BASELINE_NAMES = ("nearest", "bicubic")
 
@@ -107,9 +107,7 @@ def evaluate_fresh(
     workload = build_fresh_workload(scenario, count=count)
     assert_disjoint_from_registry(workload)
 
-    model_name, model = build_model_from_config(
-        REPO_ROOT / f"configs/model/{summary['model']}_x4.yaml"
-    )
+    model_name, model = build_model_from_config(model_config_for_run(run_dir))
     model.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
     model.eval()
     methods: dict[str, nn.Module] = {n: build_baseline(n) for n in BASELINE_NAMES}

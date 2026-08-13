@@ -44,6 +44,11 @@ class UNetConfig:
     blocks_per_stage: int = 2
     scale: int = 4
     channels: int = CHANNELS
+    # D006 by default. `none` is the D022 ablation arm: the encoder still receives the
+    # bicubic-upsampled input, because that is what makes it a 128x128 network at all, but the
+    # additive outer path is dropped and the tail must produce the absolute field. That is the
+    # SRCNN-style form rather than the VDSR-style one, and it is the single factor under test.
+    outer_baseline: str = "bicubic"
     # Bias-free input and output convolutions, per docs/ARCHITECTURE.md. Interior
     # convolutions keep their biases; only the two documented ones are bias-free.
     bias_free_ends: bool = True
@@ -102,7 +107,7 @@ class ResidualUNet(ResidualSuperResolution):
 
     def __init__(self, config: UNetConfig | None = None) -> None:
         config = config or UNetConfig()
-        super().__init__(scale=config.scale)
+        super().__init__(scale=config.scale, outer_baseline=config.outer_baseline)
         self.config = config
         activation = config.activation
         features = config.stage_features

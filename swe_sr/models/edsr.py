@@ -44,6 +44,10 @@ class EDSRConfig:
     res_scale: float = 0.1
     scale: int = 4
     channels: int = CHANNELS
+    # D006 by default. `none` is the D022 ablation arm, and for EDSR it is also a return to the
+    # published form: the reference maps low-resolution features straight to the output with no
+    # interpolation anywhere. Unlike the U-Net arm, nothing interpolated remains in the graph.
+    outer_baseline: str = "bicubic"
 
     def __post_init__(self) -> None:
         if self.scale not in (1, 2, 4, 8):
@@ -64,7 +68,7 @@ class EDSR(ResidualSuperResolution):
 
     def __init__(self, config: EDSRConfig | None = None) -> None:
         config = config or EDSRConfig()
-        super().__init__(scale=config.scale)
+        super().__init__(scale=config.scale, outer_baseline=config.outer_baseline)
         self.config = config
 
         self.head = nn.Conv2d(config.channels, config.features, 3, padding=1)

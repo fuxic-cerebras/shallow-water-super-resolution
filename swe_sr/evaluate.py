@@ -48,7 +48,7 @@ from swe_sr.metrics.physics import (
     relative_mass_error,
 )
 from swe_sr.models import build_baseline, build_model_from_config, resource_summary
-from swe_sr.training.config import REPO_ROOT, git_commit
+from swe_sr.training.config import REPO_ROOT, git_commit, model_config_for_run
 
 # Methods evaluated on identical states, so any difference is the method (docs/EXPERIMENT_PLAN.md).
 BASELINE_NAMES = ("nearest", "bicubic")
@@ -251,9 +251,7 @@ def evaluate_run(
     indices = list(range(len(dataset)))
     parameters = PhysicalParameters.from_manifest(manifest)
 
-    model_name, model = build_model_from_config(
-        REPO_ROOT / f"configs/model/{summary['model']}_x4.yaml"
-    )
+    model_name, model = build_model_from_config(model_config_for_run(run_dir))
     checkpoint = run_dir / "checkpoints" / "best.pt"
     model.load_state_dict(torch.load(checkpoint, weights_only=True))
 

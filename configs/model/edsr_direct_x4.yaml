@@ -1,0 +1,33 @@
+# EDSR x4, DIRECT prediction: the D022 ablation arm for ablation 3 of
+# docs/EXPERIMENT_PLAN.md ("outer bicubic residual versus direct prediction").
+#
+# Identical to configs/model/edsr_x4.yaml in every architectural value -- 16 blocks, 64
+# features, res_scale 0.1 -- so the parameter count is byte-for-byte the same 1,517,571 and the
+# ablation varies exactly one factor: whether the network's output is added to an endpoint-aligned
+# bicubic upsampling of the input.
+#
+# For EDSR specifically this is a return to the published form. The pinned EDSR-PyTorch reference
+# (commit 8dba558) maps low-resolution features straight to the output through its sub-pixel
+# decoder, with no interpolation anywhere in the graph. D006's outer residual was added here for
+# parity with the U-Net, not because the reference had it.
+#
+# The hypothesis under test, from the owner and consistent with the r/c decomposition in
+# docs/TRANSFER.md: the additive bicubic path may impose a bias the network then has to fight.
+# The decomposition measured correction magnitudes up to 9.5x too large at short lead time, which
+# is where an unconditionally-added baseline does the most damage. Whether removing it helps is an
+# empirical question -- the residual form also hands the model a competent starting point worth
+# roughly 138x in initial MSE at 2 h, and that is what this run puts a number on.
+#
+# `name` differs from edsr_x4.yaml on purpose: it flows into the run ID and every artifact, so an
+# ablation run can never be mistaken for the frozen T-03 EDSR run.
+
+name: edsr_direct
+architecture: edsr
+
+model:
+  blocks: 16
+  features: 64
+  res_scale: 0.1
+  scale: 4
+  channels: 3
+  outer_baseline: "none"

@@ -114,6 +114,34 @@ def field_names(cls: type) -> tuple[Any, ...]:
     return fields(cls)
 
 
+def model_config_for_run(run_dir: Path) -> Path:
+    """Resolve the model config a run was actually trained with.
+
+    Reads `model_config` from the run's own `config.yaml`, which is the only authoritative record.
+    Every consumer previously reconstructed it from the model name as
+    `configs/model/<name>_x4.yaml`; that is kept here only as a fallback for runs written before
+    the field existed, because as a general rule it is unsafe. The D022 ablation arms have
+    *identical parameter shapes* to their D006 counterparts, so `load_state_dict` against the wrong
+    arm would succeed silently and every reported number would describe a model that was never
+    trained. A name convention cannot catch that; the recorded path can.
+    """
+    run_dir = Path(run_dir)
+    config_path = run_dir / "config.yaml"
+    if config_path.is_file():
+        payload = yaml.safe_load(config_path.read_text()) or {}
+        recorded = payload.get("model_config")
+        if recorded:
+            return REPO_ROOT / str(recorded)
+    summary_path = run_dir / "summary.json"
+    if not summary_path.is_file():
+        raise FileNotFoundError(
+            f"{run_dir} records neither config.yaml:model_config nor summary.json; "
+            "cannot determine which architecture it was trained with"
+        )
+    name = json.loads(summary_path.read_text())["model"]
+    return REPO_ROOT / f"configs/model/{name}_x4.yaml"
+
+
 def git_commit() -> str:
     """Current commit, reporting a dirty tree honestly.
 

@@ -361,6 +361,42 @@
     should be read: both models lose to bicubic at short lead time on the trained pair too, which
     the aggregate concealed.
 
+## D022 - Direct-prediction ablation arm
+
+- Status: accepted
+- Decision: add `outer_baseline: bicubic | none` to both model configs and run ablation 3 of
+  `docs/EXPERIMENT_PLAN.md` ("outer bicubic residual versus direct prediction") for both
+  architectures on the frozen manifest, seed, and schedule. Authorized by the project owner on
+  2026-08-13. The frozen T-03 runs and `docs/RESULTS.md` are **not** touched; the comparison is
+  written to `docs/ABLATION_RESIDUAL.md`.
+- Reason: D006 fixed the outer residual for two reasons, and only one of them was ever
+  demonstrated. The comparison-fairness reason is a proof: zeroed weights reproduce bicubic
+  exactly, so any gain over bicubic is attributable to the learned residual. The optimization
+  reason was never tested against a direct-prediction control. The owner's specific hypothesis
+  is that for EDSR the additive bicubic path may impose a bias the network then has to fight,
+  which is consistent with the `r`/`c` decomposition in `docs/TRANSFER.md` measuring correction
+  magnitudes up to 9.5x too large at short lead time — exactly where an unconditionally added
+  baseline does the most damage.
+- Consequences:
+  - The two arms have **identical parameter counts** (1,930,208 and 1,517,571), so the ablation
+    varies exactly one factor, as `docs/EXPERIMENT_PLAN.md` requires of an ablation.
+  - What "direct" means differs by architecture, and this is stated rather than smoothed over.
+    For EDSR it is a return to the published form with no interpolation anywhere. For the U-Net
+    the encoder still receives the bicubic-upsampled input, because operating on the output grid
+    is structural to it; only the additive skip is removed. Both isolate the outer additive
+    baseline.
+  - The D006 guarantee that a zero-weight model reproduces bicubic does **not** hold for the
+    direct arms, and `tests/models/test_models.py` asserts that it does not. That is the negative
+    control proving the flag changes the graph.
+  - `model_config_for_run` now resolves the architecture from a run's recorded `config.yaml`
+    rather than from `configs/model/<model_name>_x4.yaml`. The old rule was unsafe once two arms
+    shared parameter shapes: `load_state_dict` against the wrong arm would succeed silently and
+    every reported metric would describe a model that was never trained. All seven call sites in
+    `swe_sr.evaluate`, `swe_sr.evaluate_fresh`, and the four scripts now use it, with a fallback
+    to the old convention for runs predating the field, and a regression test.
+  - Model names are `unet_direct` and `edsr_direct`, which flow into run IDs, so an ablation run
+    can never be mistaken for a frozen T-03 run in any artifact or figure.
+
 ## Template for new decisions
 
 ```text
