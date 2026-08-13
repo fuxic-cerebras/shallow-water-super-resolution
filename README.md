@@ -504,6 +504,7 @@ Read in this order. `CLAUDE.md` lists the same set and states the project's non-
 | `docs/EXPERIMENT_FREEZE.md` | the frozen T-03 record: hashes, commits, seeds, checkpoint digests |
 | `docs/RESULTS.md` | generated comparison, lead-time breakdown, fresh workloads, limitations |
 | `docs/TRANSFER.md` | the 64->256 cross-resolution transfer test and the r/c decomposition |
+| `docs/ABLATION_RESIDUAL.md` | ablation 3 (D022): outer bicubic residual against direct prediction |
 | `docs/SIGNOFF.md` | the I-03 audit: what is verified, what is outstanding |
 | `TASKS.md` | task status and per-gate evidence |
 
