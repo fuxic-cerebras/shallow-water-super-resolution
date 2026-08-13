@@ -217,6 +217,22 @@ def evaluate_run(
     # one trained on is a silent way to produce a meaningless number.
     manifest_path = Path(manifest_override or REPO_ROOT / str(config["manifest"]))
     manifest = load_manifest(manifest_path)
+
+    # A cross-pair evaluation must never land on the canonical filename. The frozen runs'
+    # `evaluation_test.json` is what docs/RESULTS.md, docs/EXPERIMENT_FREEZE.md and
+    # scripts/verify_independent.py all read, and an override that reused that name would
+    # silently replace a frozen result with a number from a different dataset. Deriving the
+    # name from the pair makes that impossible rather than relying on the caller.
+    trained_manifest_path = REPO_ROOT / str(config["manifest"])
+    trained_pair_id = (
+        manifest.pair_id
+        if manifest_override is None
+        else str(load_manifest(trained_manifest_path).pair_id)
+    )
+    transfer = manifest.pair_id != trained_pair_id
+    output_name = (
+        f"evaluation_{split}__{manifest.pair_id}.json" if transfer else f"evaluation_{split}.json"
+    )
     normalization = Normalization.from_dict(manifest.normalization)
     dataset = PairedSnapshotDataset(
         manifest,
@@ -268,10 +284,15 @@ def evaluate_run(
         "stage": summary.get("stage"),
         "model": model_name,
         "split": split,
+        "artifact": output_name,
         "checkpoint": str(checkpoint.relative_to(run_dir)),
         "checkpoint_selection_rule": summary.get("checkpoint_selection_rule"),
         "dataset_id": manifest.dataset_id,
         "pair_id": manifest.pair_id,
+        # Stated on every report, not only transfer ones, so a reader never has to infer
+        # whether the evaluated pair is the trained one.
+        "trained_pair_id": trained_pair_id,
+        "resolution_transfer": transfer,
         "ic_registry_hash": manifest.ic_registry_hash,
         "trained_at_commit": summary.get("git_commit"),
         "evaluated_at_commit": git_commit(),
@@ -289,7 +310,19 @@ def evaluate_run(
             ),
         },
     }
-    (run_dir / f"evaluation_{split}.json").write_text(json.dumps(report, indent=2, sort_keys=True))
+    if transfer:
+        report["transfer_notes"] = {
+            "trained_on": trained_pair_id,
+            "evaluated_on": manifest.pair_id,
+            "normalization_pair_id": manifest.normalization.get("pair_id"),
+            "note": (
+                "the checkpoint was trained on a different resolution pair; normalization is "
+                "the evaluated pair's own train-split statistics, so amplitude is "
+                "re-standardized and what this measures is transfer of the learned operator "
+                "across absolute grid spacing at a fixed x4 factor"
+            ),
+        }
+    (run_dir / output_name).write_text(json.dumps(report, indent=2, sort_keys=True))
     return report
 
 
@@ -356,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         args.run_dir, split=args.split, manifest_override=args.manifest, seed=args.seed
     )
     print(render_table(report))
-    print(f"\nwrote {args.run_dir / f'evaluation_{args.split}.json'}")
+    print(f"\nwrote {args.run_dir / report['artifact']}")
     return 0
 
 
