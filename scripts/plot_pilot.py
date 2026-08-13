@@ -17,6 +17,7 @@ import csv
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 
@@ -116,7 +117,7 @@ def plot_curves(runs: list[dict[str, object]], out_path: Path) -> None:
 
 
 def plot_decorrelation(
-    manifest_path: Path, run_dir: Path | None, out_path: Path, stride: int = 10
+    manifest_path: Path, run_dirs: list[Path], out_path: Path, stride: int = 10
 ) -> dict[str, list[float]]:
     """Baseline and model error against lead time -- the finding that reframes every result."""
     manifest = load_manifest(manifest_path)
@@ -126,16 +127,18 @@ def plot_decorrelation(
         split="validation",
         normalization=Normalization.from_dict(manifest.normalization),
     )
-    baselines = {"nearest": build_baseline("nearest"), "bicubic": build_baseline("bicubic")}
-    model = None
-    model_name = "model"
-    if run_dir is not None:
+    methods: dict[str, Any] = {
+        "nearest": build_baseline("nearest"),
+        "bicubic": build_baseline("bicubic"),
+    }
+    for run_dir in run_dirs:
         summary = json.loads((run_dir / "summary.json").read_text())
-        model_name = str(summary["model"])
-        model_name_path = REPO_ROOT / f"configs/model/{model_name}_x4.yaml"
-        model_name, model = build_model_from_config(model_name_path)
-        model.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
-        model.eval()
+        name, module = build_model_from_config(
+            REPO_ROOT / f"configs/model/{summary['model']}_x4.yaml"
+        )
+        module.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
+        module.eval()
+        methods[name] = module
 
     frames: dict[int, dict[str, list[float]]] = {}
     times: dict[int, float] = {}
@@ -148,13 +151,9 @@ def plot_decorrelation(
             fine = item["fine"].unsqueeze(0)
             bucket = frames.setdefault(sample.frame, {})
             times[sample.frame] = sample.time
-            for name, baseline in baselines.items():
+            for name, module in methods.items():
                 bucket.setdefault(name, []).append(
-                    float(per_channel_mse(baseline(coarse), fine).mean())
-                )
-            if model is not None:
-                bucket.setdefault(model_name, []).append(
-                    float(per_channel_mse(model(coarse), fine).mean())
+                    float(per_channel_mse(module(coarse), fine).mean())
                 )
 
     ordered = sorted(frames)
@@ -167,7 +166,8 @@ def plot_decorrelation(
     styles = {
         "nearest": ("#7f7f7f", "-s"),
         "bicubic": ("#2ca02c", "-o"),
-        model_name: ("#d62728", "-^"),
+        "edsr": ("#1f77b4", "-^"),
+        "unet": ("#d62728", "-v"),
     }
     for name, values in series.items():
         color, marker = styles.get(name, ("#1f77b4", "-o"))
@@ -294,7 +294,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {args.out / 'pilot_curves.png'}")
 
     best = min(runs, key=lambda r: r["summary"]["best_validation_mse_normalized_macro"])  # type: ignore[index,call-overload]
-    series = plot_decorrelation(args.manifest, best["dir"], args.out / "decorrelation.png")  # type: ignore[arg-type]
+    series = plot_decorrelation(
+        args.manifest, [r["dir"] for r in runs], args.out / "decorrelation.png"
+    )  # type: ignore[arg-type]
     print(f"wrote {args.out / 'decorrelation.png'}")
     for hours, bicubic_value in zip(series["hours"], series["bicubic"], strict=False):
         print(f"    t={hours:6.2f} h  bicubic={bicubic_value:.4f}")
