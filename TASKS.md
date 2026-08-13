@@ -196,8 +196,9 @@ Paired on trajectory, held-out test split, normalized macro MSE (negative favour
 Direct prediction is better for EDSR by a paired 2.0% relative, and indistinguishable for the
 U-Net. Two secondary findings matter more than the headline: the gain is NOT at short lead time
 where the hypothesis predicted it -- both direct arms are slightly worse at 2 h, and EDSR's gain
-appears from 4.7 h onward -- and both arms of both architectures still lose to bicubic below about
-7 h, so the outer form is not the cause of that deficit and the objective remains the suspect.
+appears from 4.7 h onward -- and all four runs still lose to bicubic at 2 h, so the outer form is
+not the cause of that deficit and the objective remains the suspect. The crossover differs sharply
+by architecture: EDSR is behind out to between 4.7 and 7.4 h, the U-Net only to about 2.4 h.
 One seed per arm; treat as evidence on this split rather than an established property.
 
 ## Evaluation and final review

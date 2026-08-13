@@ -101,12 +101,30 @@ So the direction of the aggregate effect is confirmed for EDSR while the propose
 not: the additive path is not costing accuracy where the correction should be near zero. Whatever
 the gain is, it is a mid-to-long-lead-time effect.
 
-**And the short-lead-time deficit is not caused by the outer form.** Both arms of both
-architectures still lose to bicubic at 2 h and 4.7 h, by 6.5x for EDSR and 1.5x for the U-Net.
+**And the short-lead-time deficit is not caused by the outer form.** At 2.01 h every one of the
+four runs loses to bicubic's 0.0090: EDSR 6.2x (residual) and 6.5x (direct), U-Net 1.14x and 1.46x.
 Removing the additive baseline does not fix it. That points the finger back at the objective —
 equal-weight MSE averaged over a mixture of a well-posed and a partly unpredictable regime, with no
 lead-time conditioning — rather than at the residual formulation. It also removes one candidate
 explanation for the `docs/TRANSFER.md` over-correction finding.
+
+The two architectures cross over at very different lead times, and the difference is large enough
+that they should not be described together. **EDSR** is still behind bicubic at 4.69 h (2.0x, both
+arms) and ahead by 7.37 h. **The U-Net is ahead by 4.69 h already** — 0.0170 and 0.0205 against
+bicubic's 0.0402 — so its deficit region is confined to the first few hours. At the validation
+split's full frame resolution the U-Net direct arm crosses bicubic at about **2.4 h**: 1.80x worse
+at 2.01 h, 1.11x at 2.35 h, 0.94x at 2.51 h. An earlier revision of this document said both
+architectures lose out to about 7 h, which was true only of EDSR.
+
+Two reading traps in `runs/<run_id>/curves.png` are worth naming, because this is the figure the
+deficit is easiest to miss in. Its third panel uses a **linear** y-axis, unlike the first two, and
+that axis is scaled by bicubic's climb to about 1.1 — so at 2 h the model-versus-bicubic gap of
+0.0064 occupies 0.6% of the panel height and is invisible. The panel also draws the **last** epoch
+in bold, not the best one; `best.pt` here is epoch 26 while the bold curve is epoch 39. Those differ
+in a way that matters: epoch 39 is better at every lead time below about 7 h (0.0145 against 0.0170
+at 2.01 h) yet loses on the macro average that selects the checkpoint, because the average is
+dominated by the long lead times where all errors are large. The selection rule inherits the
+objective's regime-mixing problem.
 
 ## Result 3 — the physics diagnostic barely moves
 
