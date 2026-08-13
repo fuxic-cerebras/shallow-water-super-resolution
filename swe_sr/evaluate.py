@@ -78,6 +78,14 @@ class MethodResult:
             "normalized_macro_mse_by_lead_time_hours": {
                 f"{hours:.3f}": value for hours, value in sorted(self.by_lead_time.items())
             },
+            # The protocol's step-2 output, serialized so a paired test between methods
+            # evaluated in *different* processes is possible at all. Without it, only the
+            # within-process comparison against bicubic can be paired, and a cross-run claim
+            # like "model A beats model B" has to fall back on whether two independent
+            # confidence intervals happen to overlap -- a strictly weaker test on the same data.
+            "trajectory_means_macro_mse_normalized": {
+                aggregate.trajectory_id: aggregate.mean for aggregate in self.trajectory_means
+            },
             "seconds_per_frame": self.seconds_per_frame,
         }
 

@@ -222,3 +222,22 @@ def test_cross_resolution_evaluation_cannot_overwrite_the_frozen_report(
 
     # The same architecture really did run at the larger resolution, and every method saw it.
     assert set(transfer["methods"]) == set(report["methods"])
+
+
+def test_trajectory_means_are_serialized_for_cross_run_paired_tests(report: dict) -> None:
+    """Without these, "model A beats model B" cannot be paired-tested across two run dirs.
+
+    Each model is evaluated in its own process against its own run directory, so the only
+    paired comparison the artifacts supported was against bicubic within one process. Comparing
+    two models then meant asking whether two independent confidence intervals overlap, which is
+    a weaker test on identical data. These are the protocol's step-2 values, one per trajectory.
+    """
+    for name, method in report["methods"].items():
+        means = method["trajectory_means_macro_mse_normalized"]
+        assert means, f"{name} serialized no trajectory means"
+        assert len(means) == report["trajectories"]
+        # Step 3 of the protocol is an equal-weight mean over exactly these values.
+        recomputed = sum(means.values()) / len(means)
+        assert recomputed == pytest.approx(
+            method["aggregate_macro_mse_normalized"]["mean"], rel=1e-12
+        )

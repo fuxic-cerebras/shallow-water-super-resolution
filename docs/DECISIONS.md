@@ -326,6 +326,41 @@
   - Superseding this freeze requires a new decision and a new freeze file, not an edit to the
     existing one.
 
+## D021 - Cross-resolution transfer is an evaluation, and never writes the canonical artifact
+
+- Status: accepted
+- Decision: The 64->256 release (`swe_gaussian_64x256_v1`) is generated in full and used **only**
+  to evaluate the frozen 32->128 checkpoints. No model is trained on it, and no checkpoint is
+  selected or tuned against it. A cross-pair evaluation writes
+  `evaluation_{split}__{pair_id}.json`; the canonical `evaluation_{split}.json` is reserved for
+  the pair a checkpoint was trained on.
+- Reason: The owner asked for a transfer test rather than a second training run, so the 64->256
+  data is evaluation-only by construction and D008's rule that the two pairs never mix in one
+  training run is untouched. The filename rule exists because `evaluate.py` previously derived
+  the artifact path from the split alone: running the documented `--manifest` override against a
+  frozen run would have replaced the frozen T-03 `evaluation_test.json` -- the file
+  `docs/RESULTS.md`, `docs/EXPERIMENT_FREEZE.md` and `scripts/verify_independent.py` all read --
+  with numbers from a different dataset, silently. Deriving the name from the evaluated pair
+  makes that impossible rather than relying on a flag the caller must remember.
+- Consequences:
+  - The full 48-trajectory 64->256 pair is generated (5.3 GiB) because normalization must be
+    fitted on its own train split (D019); generating only the 8 test trajectories would have
+    forced either a cross-pair statistics violation or a statistic fitted on evaluation data.
+    Generating it does **not** discharge D-06 or O-01, which remain deferred: this release exists
+    for evaluation and no training run has used it.
+  - Both pairs' statistics were compared and are within 0.5% on every channel, so the transfer
+    test isolates spatial scale rather than amplitude. A frozen-statistics variant was judged
+    non-separable at that margin and not run.
+  - `trajectory_means_macro_mse_normalized` is now serialized in every evaluation artifact. Two
+    models evaluated in separate processes could otherwise only be compared by asking whether
+    their independent confidence intervals overlap, which is weaker than the paired test the
+    protocol already prescribes. This is an additive schema change; the frozen in-distribution
+    artifacts are **not** regenerated to acquire the field, because re-running them would also
+    rewrite host-load-dependent `seconds_per_frame` inside a frozen record.
+  - Findings are recorded in `docs/TRANSFER.md`, including one that revises how earlier results
+    should be read: both models lose to bicubic at short lead time on the trained pair too, which
+    the aggregate concealed.
+
 ## Template for new decisions
 
 ```text

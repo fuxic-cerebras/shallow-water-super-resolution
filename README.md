@@ -41,6 +41,19 @@ Three findings beyond the headline:
   fivefold on MSE.
 - **The ranking inverts out of distribution.** On the unseen annular `ring_ood` family, EDSR
   scores 0.3246 against U-Net's 0.3505, so U-Net's in-distribution advantage does not transfer.
+  It inverts again under a *resolution* shift — see below.
+
+### Cross-resolution transfer (`docs/TRANSFER.md`)
+
+The same two checkpoints, evaluated with no retraining on a newly generated 64→256 pair. Skill
+against bicubic on the same data falls from 5.2× to 2.4× (EDSR) and 10.7× to 2.2× (U-Net), and
+EDSR wins — paired `+0.00533 [+0.00268, +0.00826]`, U-Net worse on 8 of 8 trajectories.
+
+The sharper finding is stratified: **both models lose to bicubic below about 12.7 h of lead time**,
+by up to 73×, and they do so on the trained pair too, which the aggregate had concealed. An exact
+decomposition `MSE_model/MSE_bicubic = r² − 2rc + 1` shows the cause is correction *magnitude*
+(r up to 9.5 where 1 is right) rather than direction, so it is recoverable in principle while the
+alignment loss that accounts for most of the skill drop is not.
 
 ## Getting started
 
@@ -68,6 +81,8 @@ python scripts/verify_independent.py --run-dir runs/<run-id>  # recomputes metri
 python scripts/visualize.py --seed 0 --all                    # animations via reference viz_tools
 python scripts/plot_pilot.py --runs runs/<run> ...            # curves and the lead-time figure
 python scripts/plot_final.py --runs runs/<edsr-run> runs/<unet-run>   # the final result figures
+python scripts/analyze_transfer.py --run-dir runs/<run> --manifest <other-pair>  # r/c decomposition
+python scripts/plot_transfer.py --runs runs/<edsr-run> runs/<unet-run>           # transfer figures
 ```
 
 The figures land in `viz/`, which is gitignored — they are regenerated from the frozen
@@ -93,9 +108,10 @@ Read in this order. `CLAUDE.md` lists the same set and states the project's non-
 | `docs/ARCHITECTURE.md` | repository layout, batch contract, both model designs, run directory |
 | `docs/EXPERIMENT_PLAN.md` | baselines, loss, optimizer schedule, staged runs, artifacts |
 | `docs/VALIDATION.md` | data gates, metric definitions, aggregation protocol, negative tests |
-| `docs/DECISIONS.md` | every project decision, D001 to D020, with reasons and consequences |
+| `docs/DECISIONS.md` | every project decision, D001 to D021, with reasons and consequences |
 | `docs/EXPERIMENT_FREEZE.md` | the frozen T-03 record: hashes, commits, seeds, checkpoint digests |
 | `docs/RESULTS.md` | generated comparison, lead-time breakdown, fresh workloads, limitations |
+| `docs/TRANSFER.md` | the 64->256 cross-resolution transfer test and the r/c decomposition |
 | `docs/SIGNOFF.md` | the I-03 audit: what is verified, what is outstanding |
 | `TASKS.md` | task status and per-gate evidence |
 
