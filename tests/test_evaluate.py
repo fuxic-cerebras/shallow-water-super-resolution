@@ -172,3 +172,72 @@ def test_evaluating_the_validation_split_also_works(trained: Path) -> None:
     assert validation["split"] == "validation"
     assert (trained / "evaluation_validation.json").is_file()
     assert (trained / "evaluation_test.json").is_file()
+
+
+def test_same_pair_evaluation_is_not_labelled_a_transfer(report: dict) -> None:
+    assert report["resolution_transfer"] is False
+    assert report["trained_pair_id"] == report["pair_id"]
+    assert "transfer_notes" not in report
+    assert report["artifact"] == "evaluation_test.json"
+
+
+def test_cross_resolution_evaluation_cannot_overwrite_the_frozen_report(
+    trained: Path, report: dict, tmp_path: Path
+) -> None:
+    """The negative test for the hazard, not just the feature.
+
+    A `--manifest` override pointed at a different resolution pair once wrote to the run's
+    canonical `evaluation_test.json` -- the file docs/RESULTS.md, docs/EXPERIMENT_FREEZE.md and
+    scripts/verify_independent.py all read. A frozen in-distribution result would have been
+    silently replaced by a number from another dataset. This asserts the canonical file is
+    byte-identical afterwards, so the guard is shown to fire rather than merely assumed.
+    """
+    canonical = trained / "evaluation_test.json"
+    before = canonical.read_bytes()
+
+    other = replace(
+        DATA,
+        dataset_id="test_eval_transfer",
+        pair_id="swe_gaussian_64x256_v1",
+        coarse_nodes=64,
+        fine_nodes=256,
+    )
+    manifest = generate_dataset(
+        other, registry=build_registry(), output_root=tmp_path, verbose=False
+    )
+    manifest_path = tmp_path / "processed" / manifest.dataset_id / "manifest.json"
+
+    transfer = evaluate_run(trained, split="test", manifest_override=manifest_path, seed=1)
+
+    assert canonical.read_bytes() == before, "a cross-pair evaluation overwrote a frozen report"
+    assert transfer["artifact"] == "evaluation_test__swe_gaussian_64x256_v1.json"
+    assert (trained / transfer["artifact"]).is_file()
+
+    assert transfer["resolution_transfer"] is True
+    assert transfer["trained_pair_id"] == report["pair_id"]
+    assert transfer["pair_id"] == "swe_gaussian_64x256_v1"
+    # Normalization follows the evaluated pair, so the number is not contaminated by
+    # applying one pair's statistics to another (check_pair_id enforces this).
+    assert transfer["transfer_notes"]["normalization_pair_id"] == "swe_gaussian_64x256_v1"
+
+    # The same architecture really did run at the larger resolution, and every method saw it.
+    assert set(transfer["methods"]) == set(report["methods"])
+
+
+def test_trajectory_means_are_serialized_for_cross_run_paired_tests(report: dict) -> None:
+    """Without these, "model A beats model B" cannot be paired-tested across two run dirs.
+
+    Each model is evaluated in its own process against its own run directory, so the only
+    paired comparison the artifacts supported was against bicubic within one process. Comparing
+    two models then meant asking whether two independent confidence intervals overlap, which is
+    a weaker test on identical data. These are the protocol's step-2 values, one per trajectory.
+    """
+    for name, method in report["methods"].items():
+        means = method["trajectory_means_macro_mse_normalized"]
+        assert means, f"{name} serialized no trajectory means"
+        assert len(means) == report["trajectories"]
+        # Step 3 of the protocol is an equal-weight mean over exactly these values.
+        recomputed = sum(means.values()) / len(means)
+        assert recomputed == pytest.approx(
+            method["aggregate_macro_mse_normalized"]["mean"], rel=1e-12
+        )

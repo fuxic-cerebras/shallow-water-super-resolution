@@ -270,6 +270,7 @@ def plot_qualitative(
         "eta, normalized units. Colour limits shared per row, taken from the target. "
         "Frozen T-03 best checkpoints.",
         fontsize=12,
+        wrap=True,
     )
     field_figure.savefig(fields_path, dpi=115)
     plt.close(field_figure)
@@ -278,6 +279,7 @@ def plot_qualitative(
         "Signed error, prediction minus target. Colour limits shared per row so panels are "
         "comparable within a lead time.",
         fontsize=12,
+        wrap=True,
     )
     error_figure.savefig(errors_path, dpi=115)
     plt.close(error_figure)

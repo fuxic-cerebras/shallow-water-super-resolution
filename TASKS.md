@@ -222,7 +222,17 @@ already found there, and the D018 claim that the specified augmentation is inval
 
 ## Optional follow-ups
 
-- O-01: train both models separately on the backup 64->256 release.
+- O-07: **ready-for-review** — cross-resolution transfer, run 2026-08-13 on owner request. Generate
+  the 64->256 pair and evaluate the frozen 32->128 checkpoints on it with no retraining (D021,
+  `docs/TRANSFER.md`). Evidence: 12/12 data gates at the new pair; both models still beat bicubic
+  but skill falls from 5.2x to 2.4x (EDSR) and 10.7x to 2.2x (U-Net); the ranking inverts, EDSR
+  0.0444 against U-Net 0.0497, paired `+0.00533 [+0.00268, +0.00826]` excluding zero with U-Net
+  worse on 8 of 8 trajectories; both models lose to bicubic below about 12.7 h, and the exact
+  `r^2 - 2rc + 1` decomposition attributes that to correction magnitude (r up to 9.5) rather than
+  direction.
+- O-01: train both models separately on the backup 64->256 release. **Still deferred** — the data
+  now exists as a by-product of O-07, but no training run has used it, which is the whole content
+  of O-01.
 - O-02: training-trajectory-count ablation.
 - O-03: single-field versus three-field ablation.
 - O-04: direct prediction versus bicubic residual.
