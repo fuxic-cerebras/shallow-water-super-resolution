@@ -106,8 +106,8 @@ what makes any reported gain over bicubic attributable to the learned residual.
 | T-01 | ready-for-review | ML | V-03,D-05 | Implement normalized MSE, validation, best/last checkpoints, early stopping, provenance | G5 |
 | T-02 | ready-for-review | ML | T-01 | Run deterministic smoke and primary pilot for both models; project runtime/memory | G5 |
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
-| I-02 | unclaimed | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |
-| T-03 | unclaimed | ML | I-02 | Run full primary U-Net and EDSR training and loss curves | G6 |
+| I-02 | complete | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |
+| T-03 | ready-for-review | ML | I-02 | Run full primary U-Net and EDSR training and loss curves | G6 |
 
 G5 evidence (measured on Slurm jobs 295533 and 295561, node cpu-dy-x48-m7a-3, 16 threads,
 BF16 on AMD EPYC 9R14): both pilots ran 1,970 steps over 10 epochs with validation loss
@@ -155,6 +155,31 @@ Their tests are marked `backup` rather than deleted, so coverage returns with
 Backup *config* assertions stay in the default suite, since they cost nothing and pin the
 D017 stride and duration relationship. Nothing about the backup design is withdrawn: its
 config, smoke config, and the D008/D017 decisions all stand.
+
+G6 FROZEN 2026-08-13 by owner authorization. I-02 is complete: the experiment is frozen in
+`docs/EXPERIMENT_FREEZE.md` and recorded as D020, pinning the dataset and manifest hashes, IC
+registry hash, launch commits, config hashes, seed, normalization statistics, metric
+definitions, checkpoint rule, checkpoint SHA-256 digests, and the held-out test results.
+
+T-03 results, held-out test split, 1,576 snapshots over 8 trajectories, both independently
+recomputed from arrays with 20 checks each passing:
+
+| method | params | normMSE | 95% CI |
+|---|---:|---:|---|
+| nearest | 0 | 0.4301 | [0.3076, 0.5435] |
+| bicubic | 0 | 0.4295 | [0.3069, 0.5431] |
+| EDSR | 1,517,571 | 0.0830 | [0.0543, 0.1129] |
+| U-Net | 1,930,208 | 0.0400 | [0.0261, 0.0544] |
+
+U-Net wins by 2.1x. Two findings worth carrying into any write-up: lower pixel MSE does not
+imply better physics, since EDSR worsens relative mass error to 0.0540 against bicubic's 0.0392
+while beating it fivefold on MSE; and the early-lead-time deficit that once looked like a
+broken objective is absent for U-Net, which matches bicubic at 2 h.
+
+Note the two runs keep `stage: diagnostic` in their own artifacts, deliberately. They were
+launched as diagnostics and a completed run's provenance is not rewritten to match a later
+decision. `swe_sr.report` reads the freeze record, so it identifies them as T-03 correctly
+without altering them.
 
 ## Evaluation and final review
 

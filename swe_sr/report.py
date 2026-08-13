@@ -38,6 +38,21 @@ def _fresh(run_dir: Path, scenario: str) -> dict[str, Any] | None:
     return json.loads(path.read_text()) if path.is_file() else None
 
 
+def _frozen_run_ids() -> set[str]:
+    """Run IDs designated as the frozen experiment by docs/EXPERIMENT_FREEZE.md.
+
+    Read from the freeze record rather than from a run's own stage label, because the two frozen
+    runs were launched as diagnostics and their artifacts are deliberately not rewritten. The
+    freeze file is the single place that designation lives.
+    """
+    path = Path(__file__).resolve().parents[1] / "docs" / "EXPERIMENT_FREEZE.md"
+    if not path.is_file():
+        return set()
+    import re
+
+    return set(re.findall(r"`(\d{8}T\d{6}Z_[a-z]+_[0-9a-f]{8}_[0-9a-f]{8})`", path.read_text()))
+
+
 def _row(name: str, method: dict[str, Any]) -> str:
     aggregate = method["aggregate_macro_mse_normalized"]
     normalized = method["normalized_metrics"]
@@ -80,17 +95,39 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
         f"{first['trajectories']} trajectories",
         f"- run stages: {', '.join(sorted(stages))}",
     ]
-    if stages - {"full"}:
+    frozen = _frozen_run_ids()
+    all_frozen = bool(frozen) and all(
+        report["run_id"] in frozen for _, report in available if report
+    )
+    if all_frozen:
         lines.append(
-            f"- **These runs are labelled {', '.join(sorted(stages))}, not `full`.** They are "
-            "not the frozen T-03 experiment, which requires I-02 to freeze the manifest, "
-            "commit, configs, seed, and metrics first."
+            "- **These runs are the frozen T-03 experiment** per `docs/EXPERIMENT_FREEZE.md` "
+            "(D020). Their own artifacts still read `stage: diagnostic`, which is what they were "
+            "launched as; a completed run's provenance is not rewritten to match a later "
+            "decision, so the freeze record is the designation."
         )
-    for _, report in available:
+    elif stages - {"full"}:
+        lines.append(
+            f"- **These runs are labelled {', '.join(sorted(stages))}, not `full`, and are not "
+            "listed in `docs/EXPERIMENT_FREEZE.md`.** They are not the frozen T-03 experiment, "
+            "which requires I-02 to freeze the manifest, commit, configs, seed, and metrics."
+        )
+    for run_dir, report in available:
         assert report is not None
+        # Runs predating the launch/completion commit split recorded HEAD at write time, which
+        # can differ from the code that actually ran. Say so rather than cite it as definitive.
+        summary_path = run_dir / "summary.json"
+        has_split = False
+        if summary_path.is_file():
+            has_split = "git_commit_at_completion" in json.loads(summary_path.read_text())
+        caveat = (
+            ""
+            if has_split
+            else " (recorded at run end; the launch commit is in `docs/EXPERIMENT_FREEZE.md`)"
+        )
         lines.append(
             f"- `{report['model']}`: run `{report['run_id']}`, trained at commit "
-            f"`{report['trained_at_commit']}`, checkpoint `{report['checkpoint']}`"
+            f"`{report['trained_at_commit']}`{caveat}, checkpoint `{report['checkpoint']}`"
         )
 
     lines += [

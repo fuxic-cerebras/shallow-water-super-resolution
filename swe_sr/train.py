@@ -304,6 +304,11 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
     )
 
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    # Capture the commit the code was LOADED from, before training begins. `git_commit()` called
+    # at the end records HEAD at write time, which is a different thing: if anyone commits while
+    # a multi-hour run is in flight, the summary would attribute the run to code it never
+    # executed. Both are recorded so the distinction is visible rather than assumed.
+    launch_commit = git_commit()
     run_id = config.run_id(model_name, timestamp)
     run_dir = REPO_ROOT / config.run_root / run_id
     (run_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
@@ -436,7 +441,9 @@ def train(config: TrainingConfig, *, verbose: bool = True) -> TrainingResult:
         history=history,
         projection=projection,
     )
-    _write_summary(run_dir, config, model_name, manifest, result, environment)
+    _write_summary(
+        run_dir, config, model_name, manifest, result, environment, launch_commit=launch_commit
+    )
     return result
 
 
@@ -593,12 +600,17 @@ def _write_summary(
     manifest: Any,
     result: TrainingResult,
     environment: dict[str, Any],
+    *,
+    launch_commit: str,
 ) -> None:
     summary = {
         "run_id": result.run_id,
         "stage": config.stage,
         "model": model_name,
-        "git_commit": git_commit(),
+        # The commit the code was loaded from. This is the one that describes the run.
+        "git_commit": launch_commit,
+        # HEAD when the summary was written, which can differ if anyone committed mid-run.
+        "git_commit_at_completion": git_commit(),
         "config_hash": config.config_hash,
         "dataset_id": manifest.dataset_id,
         "pair_id": manifest.pair_id,

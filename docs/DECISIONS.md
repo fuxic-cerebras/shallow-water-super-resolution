@@ -294,6 +294,38 @@
   also writes the `processed/<dataset_id>/{manifest.json,normalization.json}` layer that
   `docs/DATASET.md` specifies and that `CLAUDE.md`'s `validate` command points at.
 
+## D020 - T-03 experiment freeze
+
+- Status: accepted
+- Decision: the two completed 30,000-step runs recorded in `docs/EXPERIMENT_FREEZE.md` are the
+  T-03 primary experiment. That file pins the dataset, manifest hash, IC registry hash, launch
+  commits, config hashes, seed, normalization statistics, metric definitions, checkpoint rule,
+  checkpoint SHA-256 digests, and the held-out test results. Authorized by the project owner on
+  2026-08-13.
+- Reason: the diagnostic runs answered the question they were launched for and the evidence is
+  sufficient to freeze. Both models trained the full 30,000 steps on the frozen manifest with
+  the primary seed, both were independently recomputed from arrays, and the outstanding
+  lead-time concern resolved: U-Net matches bicubic at the shortest lead time (0.0103 against
+  0.0090) rather than losing badly, so no design change is required and stratified reporting is
+  sufficient.
+- Consequences:
+  - The runs keep `stage: diagnostic` inside their own artifacts, because that is what they were
+    launched as. Rewriting a completed run's provenance to match a later decision would falsify
+    it. The freeze record is the designation; `swe_sr.report` reads that file so a frozen run is
+    identified correctly without its artifacts being altered.
+  - The two runs were launched from different commits, `077d6b53` and `da865691`. This was
+    verified immaterial rather than assumed: the only training-path difference is the addition of
+    `swe_sr/data/fresh.py`, which training never imports. `train.py`, both models, the data
+    pipeline, the loss metric, and all configs are byte-identical across that range.
+  - A provenance flaw was found and fixed while preparing this freeze. `summary.json` recorded
+    `git_commit` as HEAD when the summary was written, not when the code was loaded, so a run
+    during which anyone commits would be attributed to code it never executed. `train.py` now
+    records `git_commit` at launch and `git_commit_at_completion` separately. The two frozen runs
+    predate the fix, so their accurate launch commits are taken from their `run_id` values and
+    stated explicitly in the freeze record.
+  - Superseding this freeze requires a new decision and a new freeze file, not an edit to the
+    existing one.
+
 ## Template for new decisions
 
 ```text
