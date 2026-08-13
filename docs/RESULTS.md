@@ -18,6 +18,8 @@ Aggregation: metrics computed per snapshot and per channel, averaged within each
 
 Units: `normMSE` and `relL2` are dimensionless on channel-normalized fields; `mass err` is a dimensionless relative error on de-normalized SI fields; `ms/frame` is wall-clock inference time on the evaluating host.
 
+**`ms/frame` is not a controlled cross-run comparison.** Each model's row comes from its own evaluation, run on a shared host at a different time, so the column reflects host load as well as model cost. The bicubic row is the control: it is identical work in every run, so the spread across runs of *that* row bounds how much of any model-to-model difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` throughput, which is measured within a run over 30,000 steps on a fixed 16-thread allocation: 79.7 against 42.0 samples/s median, so U-Net costs about **1.9x** EDSR.
+
 Reference: normalized channels have unit variance, so **predicting the channel mean scores 1.0**. A method near 1.0 carries no information about the target.
 
 | Method | Params | normMSE | 95% CI | eta relL2 | u relL2 | v relL2 | mass err | ms/frame |
@@ -25,7 +27,7 @@ Reference: normalized channels have unit variance, so **predicting the channel m
 | nearest | 0 | 0.4301 | [0.3076, 0.5435] | 0.6305 | 0.6987 | 0.7044 | 0.0439 | 0.0 |
 | bicubic | 0 | 0.4295 | [0.3069, 0.5431] | 0.6239 | 0.6983 | 0.7021 | 0.0392 | 0.2 |
 | edsr | 1,517,571 | 0.0830 | [0.0543, 0.1129] | 0.2826 | 0.3168 | 0.3150 | 0.0540 | 32.9 |
-| unet | 1,930,208 | 0.0400 | [0.0261, 0.0544] | 0.1951 | 0.2149 | 0.2135 | 0.0347 | 73.5 |
+| unet | 1,930,208 | 0.0400 | [0.0261, 0.0544] | 0.1951 | 0.2149 | 0.2135 | 0.0347 | 103.9 |
 
 ### Paired comparison against bicubic
 
@@ -78,6 +80,23 @@ The lead-time span column matters: a fresh workload covering a different span th
 | ring_ood | unet | bicubic | 1.3348 | [1.3226, 1.3515] | 2.0-34.9 | yes |
 | ring_ood | unet | nearest | 1.3366 | [1.3239, 1.3531] | 2.0-34.9 | yes |
 | ring_ood | unet | unet | 0.3505 | [0.3328, 0.3682] | 2.0-34.9 | yes |
+
+## Figures
+
+Not committed — `viz/` is gitignored. Regenerate from the frozen checkpoints:
+
+```bash
+python scripts/plot_final.py --runs runs/<edsr-run> runs/<unet-run>
+```
+
+| File | Contents |
+|---|---|
+| `viz/final_curves.png` | three panels: train and validation loss against optimizer step; validation loss against wall-clock minutes; per-channel validation MSE. Bicubic is drawn as a horizontal level, not a curve, because it does not train. |
+| `viz/qualitative.png` | `eta` fields at four lead times (about 2, 13, 24 and 34.9 h) for coarse input, each model, and the fine target. Colour limits are shared across a row and taken from the **target**, so a smoother prediction cannot look better by being autoscaled to its own narrower range. |
+| `viz/qualitative_error.png` | signed error fields for the same frames, each panel labelled with its own MSE, limits shared within a row. |
+| `viz/qualitative.gif` | the same comparison animated over the test trajectory, with a lead-time MSE trace that advances with the frame. |
+
+Nearest-neighbour is omitted from all four. It scores 0.4301 against bicubic's 0.4295, so its curve would sit under bicubic's and its fields are visually indistinguishable at this scale; the number is in the comparison table above where it can be read exactly.
 
 ## Limitations
 
