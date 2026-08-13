@@ -189,7 +189,7 @@ without altering them.
 | E-02 | ready-for-review | PDE/Data | I-02 | Generate frozen `fresh_id` and `ring_ood` evaluation workloads | G7 |
 | E-03 | ready-for-review | ML | E-01,E-02 | Evaluate fresh workloads without tuning and create tables/plots | G7 |
 | V-05 | ready-for-review | Verifier | E-03 | Recompute selected metrics and audit leakage, units, aggregation, and claims | G7 |
-| I-03 | in-progress | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
+| I-03 | signed-off-with-exceptions | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
 
 G8 evidence, clean-install reproduction (verified from a fresh clone of the repository with
 `--recurse-submodules`, a fresh venv, and `pip install -e ".[dev]"`):
@@ -209,6 +209,23 @@ fresh; only the torch wheel resolution was not.
 
 I-03 remains `in-progress`, not complete. Sign-off requires the results it would sign off on,
 and those depend on the outstanding lead-time decision recorded under G5.
+
+G8 SIGN-OFF 2026-08-13. `docs/SIGNOFF.md` records the I-03 audit: all eight definition-of-done
+items pass, all five research questions are answered from measured results, both frozen
+checkpoints are independently recomputed with 20 checks each passing, and six findings that
+revise the original specification are recorded as decisions.
+
+Three exceptions are stated rather than waived: the frozen dataset sits at `data/staging/` rather
+than the canonical path pending owner approval to remove a stale directory; the backup 64->256
+pair is deferred; and clean-install reproduction did not re-resolve the torch wheel locally,
+though CI covers it.
+
+Sign-off scope limit, stated plainly in `docs/SIGNOFF.md`: a single agent performed every role, so
+the independence the G7 and G8 gates assume was not available. Tasks therefore remain
+`ready-for-review` rather than `complete`, apart from owner-authorized I-02. The document names
+the three areas most deserving external review: D011 destaggering and its effect on reported
+velocity errors, the aggregation protocol implementation given a batch-dependence defect was
+already found there, and the D018 claim that the specified augmentation is invalid.
 
 ## Optional follow-ups
 

@@ -58,6 +58,27 @@ Included because the aggregate hides a regime change: the models are worse than 
 | 32.51 | 0.9183 | 0.1627 | 0.9249 | 0.0783 |
 | 34.86 | 0.9919 | 0.2277 | 0.9912 | 0.1286 |
 
+## Fresh post-training workloads
+
+Generated after model selection, evaluated without fine-tuning, and using the training split's normalization. **Reported separately and never mixed into the held-out test score** (`docs/DATASET.md`).
+
+The lead-time span column matters: a fresh workload covering a different span than the test split is not comparable to it. `ring_ood` trajectories differ only by a small centre offset, so their interval reflects within-workload repeatability rather than generalization spread.
+
+| Scenario | Run | Method | normMSE | 95% CI | lead time (h) | span matches training |
+|---|---|---|---:|---|---|---|
+| fresh_id | edsr | bicubic | 0.4260 | [0.2950, 0.5384] | 2.0-34.9 | yes |
+| fresh_id | edsr | edsr | 0.0666 | [0.0397, 0.1012] | 2.0-34.9 | yes |
+| fresh_id | edsr | nearest | 0.4257 | [0.2950, 0.5376] | 2.0-34.9 | yes |
+| ring_ood | edsr | bicubic | 1.3348 | [1.3226, 1.3515] | 2.0-34.9 | yes |
+| ring_ood | edsr | edsr | 0.3246 | [0.3197, 0.3296] | 2.0-34.9 | yes |
+| ring_ood | edsr | nearest | 1.3366 | [1.3239, 1.3531] | 2.0-34.9 | yes |
+| fresh_id | unet | bicubic | 0.4260 | [0.2950, 0.5384] | 2.0-34.9 | yes |
+| fresh_id | unet | nearest | 0.4257 | [0.2950, 0.5376] | 2.0-34.9 | yes |
+| fresh_id | unet | unet | 0.0303 | [0.0143, 0.0467] | 2.0-34.9 | yes |
+| ring_ood | unet | bicubic | 1.3348 | [1.3226, 1.3515] | 2.0-34.9 | yes |
+| ring_ood | unet | nearest | 1.3366 | [1.3239, 1.3531] | 2.0-34.9 | yes |
+| ring_ood | unet | unet | 0.3505 | [0.3328, 0.3682] | 2.0-34.9 | yes |
+
 ## Limitations
 
 - Error grows strongly with lead time because the coarse and fine members of each pair are **independent** integrations (D002) and progressively decorrelate. Beyond roughly 30 hours the coarse state carries little information about the specific fine realization, so error there is not recoverable by any method.

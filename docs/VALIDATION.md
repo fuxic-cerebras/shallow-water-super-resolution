@@ -104,6 +104,12 @@ wrong normalization pair ID, and invalid non-x4 output.
 
 ## Comparison table
 
+Generated results live in `docs/RESULTS.md`, produced by `python -m swe_sr.report` from the
+evaluation artifacts. The table below stays an empty template on purpose: this is a
+specification, and `docs/PROJECT_SPEC.md` requires that empty cells be populated only by
+generated results. Hand-copying numbers into a spec would create a second source of truth that
+could silently drift from the artifacts.
+
 At minimum, the final report contains:
 
 | Method | Params | Test MSE | eta relL2 | u relL2 | v relL2 | Mass err | Time/frame |
