@@ -18,7 +18,7 @@ Aggregation: metrics computed per snapshot and per channel, averaged within each
 
 Units: `normMSE` and `relL2` are dimensionless on channel-normalized fields; `mass err` is a dimensionless relative error on de-normalized SI fields; `ms/frame` is wall-clock inference time on the evaluating host.
 
-**`ms/frame` is not a controlled cross-run comparison.** Each model's row comes from its own evaluation, run on a shared host at a different time, so the column reflects host load as well as model cost. The bicubic row is the control: it is identical work in every run, so the spread across runs of *that* row bounds how much of any model-to-model difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` throughput, which is measured within a run over 30,000 steps on a fixed 16-thread allocation: 79.7 against 42.0 samples/s median, so U-Net costs about **1.9x** EDSR.
+**`ms/frame` is not a controlled cross-run comparison.** Each model's row comes from its own evaluation, run on a shared host at a different time, so the column reflects host load as well as model cost. The bicubic row is the control: it is identical work in every run, so the spread across runs of *that* row bounds how much of any model-to-model difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` throughput, which is measured within a run over 30,000 steps on a fixed 16-thread allocation: 79.8 against 42.0 samples/s averaged over epochs (`summary.json` -> `projection.mean_samples_per_second`), so U-Net costs about **1.9x** EDSR.
 
 Reference: normalized channels have unit variance, so **predicting the channel mean scores 1.0**. A method near 1.0 carries no information about the target.
 
