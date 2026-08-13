@@ -195,9 +195,10 @@ def verify(run_dir: Path, split: str) -> int:
     # 4. Metrics, recomputed from arrays through an independent path.
     print("\nmetrics recomputed independently from arrays:")
     from swe_sr.models import build_baseline, build_model_from_config
+    from swe_sr.training.config import model_config_for_run
 
     summary = json.loads((run_dir / "summary.json").read_text())
-    _, model = build_model_from_config(repo_root / f"configs/model/{summary['model']}_x4.yaml")
+    _, model = build_model_from_config(model_config_for_run(run_dir))
     model.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
     model.eval()
     methods: dict[str, Any] = {

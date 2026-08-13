@@ -149,7 +149,9 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
         "every run, so the spread across runs of *that* row bounds how much of any model-to-model "
         "difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` "
         "throughput, which is measured within a run over 30,000 steps on a fixed 16-thread "
-        "allocation: 79.7 against 42.0 samples/s median, so U-Net costs about **1.9x** EDSR.",
+        "allocation: 79.8 against 42.0 samples/s averaged over epochs "
+        "(`summary.json` -> `projection.mean_samples_per_second`), so U-Net costs about **1.9x** "
+        "EDSR.",
         "",
         "Reference: normalized channels have unit variance, so **predicting the channel mean "
         "scores 1.0**. A method near 1.0 carries no information about the target.",

@@ -31,6 +31,10 @@ InterpolationMode = Literal["bicubic", "bilinear", "nearest"]
 DEFAULT_MODE: InterpolationMode = "bicubic"
 ALIGN_CORNERS = True
 
+# The outer form of a model, per D006 (`bicubic`) and the D022 ablation (`none`).
+OuterBaseline = Literal["bicubic", "none"]
+OUTER_BASELINES: tuple[str, ...] = ("bicubic", "none")
+
 
 def upsample(
     inputs: torch.Tensor,
@@ -107,11 +111,24 @@ class ResidualSuperResolution(nn.Module):
     Both models share this outer form so the comparison isolates the learned residual. The
     subclass supplies `residual()`; the outer bicubic path is fixed here and identical to the
     M-01 baseline, so a model that learned nothing would exactly reproduce that baseline.
+
+    `outer_baseline="none"` drops the additive path and returns the branch output as the
+    prediction: the direct-prediction arm of the D022 ablation. It changes no parameter, so the
+    two arms have identical capacity and the ablation varies exactly one factor. What "direct"
+    means then differs slightly by architecture, which is the honest reading and is stated in
+    each subclass: EDSR reverts to the published form with no interpolation anywhere, while the
+    U-Net keeps the *interpolated input* its encoder is built around and loses only the additive
+    skip. Both isolate the outer additive baseline, which is the factor under test.
     """
 
-    def __init__(self, scale: int = 4) -> None:
+    def __init__(self, scale: int = 4, outer_baseline: str = "bicubic") -> None:
         super().__init__()
+        if outer_baseline not in OUTER_BASELINES:
+            raise ValueError(
+                f"unknown outer_baseline {outer_baseline!r}; available: {sorted(OUTER_BASELINES)}"
+            )
         self.scale = scale
+        self.outer_baseline = outer_baseline
 
     def residual(self, inputs: torch.Tensor) -> torch.Tensor:  # pragma: no cover - abstract
         raise NotImplementedError
@@ -121,7 +138,10 @@ class ResidualSuperResolution(nn.Module):
             raise ValueError(
                 f"expected {CHANNELS} channels [eta, u, v] on axis -3, got {tuple(inputs.shape)}"
             )
-        return upsample(inputs, self.scale) + self.residual(inputs)
+        branch = self.residual(inputs)
+        if self.outer_baseline == "none":
+            return branch
+        return upsample(inputs, self.scale) + branch
 
     @property
     def parameter_count(self) -> int:

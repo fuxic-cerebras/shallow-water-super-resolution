@@ -406,3 +406,125 @@ def test_interpolation_module_is_scriptable_as_a_plain_module() -> None:
     assert isinstance(baseline, nn.Module)
     assert list(baseline.parameters()) == []
     assert isinstance(baseline, Interpolation)
+
+
+# -- The D022 direct-prediction ablation arm ------------------------------------------
+#
+# `outer_baseline="none"` drops the additive bicubic path so the branch output IS the
+# prediction. These tests pin the two properties the ablation depends on: capacity is
+# unchanged, so the comparison varies one factor; and the flag demonstrably changes the
+# forward pass, so a run labelled `direct` cannot silently be the residual model.
+
+
+def _direct_models() -> list[tuple[str, ResidualSuperResolution]]:
+    return [
+        (
+            "unet_direct",
+            ResidualUNet(
+                UNetConfig(stage_features=(8, 16, 32), blocks_per_stage=1, outer_baseline="none")
+            ),
+        ),
+        ("edsr_direct", EDSR(EDSRConfig(features=16, blocks=2, outer_baseline="none"))),
+    ]
+
+
+@pytest.mark.parametrize(
+    "name,model", _direct_models(), ids=lambda v: v if isinstance(v, str) else ""
+)
+@pytest.mark.parametrize("low,high", REQUIRED_SHAPES)
+def test_direct_models_satisfy_the_same_shape_contract(
+    name: str, model: ResidualSuperResolution, low: int, high: int
+) -> None:
+    output = model(torch.randn(2, 3, low, low))
+    assert tuple(output.shape) == (2, 3, high, high)
+
+
+@pytest.mark.parametrize(
+    "name,model", _direct_models(), ids=lambda v: v if isinstance(v, str) else ""
+)
+def test_direct_prediction_omits_the_bicubic_path(
+    name: str, model: ResidualSuperResolution
+) -> None:
+    """The forward pass must be the branch alone, with no baseline added."""
+    inputs = torch.randn(2, 3, 32, 32)
+    with torch.no_grad():
+        torch.testing.assert_close(model(inputs), model.residual(inputs), rtol=0, atol=0)
+
+
+@pytest.mark.parametrize(
+    "name,model", _direct_models(), ids=lambda v: v if isinstance(v, str) else ""
+)
+def test_a_zeroed_direct_model_outputs_zero_not_bicubic(
+    name: str, model: ResidualSuperResolution
+) -> None:
+    """The negative control for D006.
+
+    The residual arm's defining property is that a model which learned nothing reproduces the
+    bicubic baseline exactly. The direct arm must NOT have it: zeroed weights output zero, which
+    scores worse than predicting the channel mean. Asserting the difference is what proves the
+    two arms are genuinely different models rather than the same graph behind a flag that does
+    nothing.
+    """
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.zero_()
+    model.eval()
+    inputs = torch.randn(2, 3, 32, 32)
+    with torch.no_grad():
+        output = model(inputs)
+        baseline = bicubic_baseline(scale=4)(inputs)
+    torch.testing.assert_close(output, torch.zeros_like(output), rtol=0, atol=0)
+    assert not torch.allclose(output, baseline)
+
+
+def test_the_two_arms_have_identical_capacity() -> None:
+    """One factor varies. Equal parameter counts are what make that true."""
+    assert count_parameters(build_unet()) == count_parameters(build_unet(outer_baseline="none"))
+    assert count_parameters(build_edsr()) == count_parameters(build_edsr(outer_baseline="none"))
+
+
+@pytest.mark.parametrize(
+    "name,model", _direct_models(), ids=lambda v: v if isinstance(v, str) else ""
+)
+def test_direct_models_produce_finite_gradients_everywhere(
+    name: str, model: ResidualSuperResolution
+) -> None:
+    model.zero_grad(set_to_none=True)
+    model(torch.randn(2, 3, 32, 32)).pow(2).mean().backward()
+    for parameter_name, parameter in model.named_parameters():
+        assert parameter.grad is not None, f"{name}.{parameter_name} received no gradient"
+        assert torch.isfinite(parameter.grad).all(), f"{name}.{parameter_name} gradient not finite"
+
+
+def test_an_unknown_outer_baseline_is_rejected() -> None:
+    with pytest.raises(ValueError, match="unknown outer_baseline"):
+        build_edsr(outer_baseline="linear")
+    with pytest.raises(ValueError, match="unknown outer_baseline"):
+        build_unet(outer_baseline="linear")
+
+
+def test_the_shipped_ablation_configs_are_the_published_models_minus_the_baseline() -> None:
+    """The two new configs must differ from the frozen ones in exactly one value.
+
+    Guards the whole point of the ablation: if a stray hyperparameter drifted between the arms,
+    any measured difference could be that instead of the outer form.
+    """
+    import yaml
+
+    from swe_sr.models import build_model_from_config
+
+    root = Path(__file__).resolve().parents[2] / "configs" / "model"
+    for arch, expected_parameters in (("unet", 1_930_208), ("edsr", 1_517_571)):
+        published = yaml.safe_load((root / f"{arch}_x4.yaml").read_text())
+        direct = yaml.safe_load((root / f"{arch}_direct_x4.yaml").read_text())
+        assert direct["architecture"] == published["architecture"]
+        assert direct["name"] == f"{arch}_direct", "the ablation must not reuse the frozen name"
+        assert direct["model"].pop("outer_baseline") == "none"
+        published["model"].pop("outer_baseline", None)
+        assert direct["model"] == published["model"], (
+            f"{arch}_direct_x4.yaml differs from {arch}_x4.yaml in more than the outer baseline"
+        )
+        name, model = build_model_from_config(root / f"{arch}_direct_x4.yaml")
+        assert name == f"{arch}_direct"
+        assert count_parameters(model) == expected_parameters
+        assert model.outer_baseline == "none"

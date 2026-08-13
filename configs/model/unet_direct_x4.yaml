@@ -1,0 +1,38 @@
+# Residual U-Net x4, DIRECT prediction: the D022 ablation arm for ablation 3 of
+# docs/EXPERIMENT_PLAN.md ("outer bicubic residual versus direct prediction").
+#
+# Identical to configs/model/unet_x4.yaml in every architectural value, so the parameter count is
+# the same 1,930,208 and exactly one factor varies: whether the network's output is added to an
+# endpoint-aligned bicubic upsampling of the input.
+#
+# What "direct" means here is narrower than for EDSR, and the difference matters when reading the
+# result. The U-Net is built to operate on the *output* grid, so it still bicubic-upsamples its
+# input before the head convolution -- that is structural, not the factor under test. Dropping
+# `outer_baseline` removes only the additive skip, so the tail must now produce the absolute field
+# rather than a correction to it. In image-super-resolution terms this arm is SRCNN-style
+# (interpolated input, no global skip) against the SRCNN-vs-VDSR contrast, while the EDSR arm is
+# genuinely interpolation-free. Both arms isolate the same single factor: the outer additive
+# baseline.
+#
+# One consequence worth predicting before the run rather than after: the D006 guarantee that a
+# zero-weight model reproduces bicubic exactly does NOT hold for this arm, and neither does the
+# related property that Witte et al. (2024) obtain from fully bias-free convolutions. With
+# bias-free head and tail, a zero-weight model here outputs exactly zero, which scores about 1.3
+# to 1.5 normalized MSE -- worse than predicting the channel mean. So this arm starts from a far
+# worse point and has more to learn; if it still matches or beats the residual arm, that is a
+# strong result.
+#
+# `name` differs from unet_x4.yaml on purpose: it flows into the run ID and every artifact, so an
+# ablation run can never be mistaken for the frozen T-03 U-Net run.
+
+name: unet_direct
+architecture: unet
+
+model:
+  stage_features: [32, 64, 128]
+  blocks_per_stage: 2
+  activation_name: silu
+  bias_free_ends: true
+  scale: 4
+  channels: 3
+  outer_baseline: "none"

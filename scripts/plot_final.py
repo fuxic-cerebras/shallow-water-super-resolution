@@ -50,6 +50,7 @@ from swe_sr.data.manifest import load_manifest
 from swe_sr.data.normalization import Normalization
 from swe_sr.data.storage import resolve_array_dir
 from swe_sr.models import build_baseline, build_model_from_config
+from swe_sr.training.config import model_config_for_run
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # Normalized channels have unit variance, so predicting the channel mean scores exactly 1.0.
@@ -70,10 +71,7 @@ def _load_methods(run_dirs: list[Path], *, include_nearest: bool = True) -> dict
         methods["nearest"] = build_baseline("nearest")
     methods["bicubic"] = build_baseline("bicubic")
     for run_dir in run_dirs:
-        summary = json.loads((run_dir / "summary.json").read_text())
-        name, module = build_model_from_config(
-            REPO_ROOT / f"configs/model/{summary['model']}_x4.yaml"
-        )
+        name, module = build_model_from_config(model_config_for_run(run_dir))
         module.load_state_dict(torch.load(run_dir / "checkpoints" / "best.pt", weights_only=True))
         module.eval()
         methods[name] = module

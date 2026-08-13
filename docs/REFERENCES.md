@@ -69,25 +69,49 @@ Relevant choices:
 Difference in this project: version 1 is discrete 2D spatial SR at one time, uses an
 MSE-only baseline, and defers continuous space-time decoding and PDE loss.
 
-### Margenberg et al. (2024)
+### Witte et al. (2024)
 
-"Dynamic Deep Learning Based Super-Resolution for Shallow Water Flows,"
-arXiv:2404.06400v2.
+"Dynamic Deep Learning Based Super-Resolution For The Shallow Water Equations,"
+arXiv:2404.06400v2. Maximilian Witte, Fabricio Rodrigues Lapolli, Philip Freese,
+Sebastian Götschel, Daniel Ruprecht, Peter Korn, Christopher Kadow.
 
-Relevant choices:
+> **Citation corrected 2026-08-13.** This entry previously read "Margenberg et al. (2024),
+> *Dynamic Deep Learning Based Super-Resolution for Shallow Water Flows*". Both the author and
+> the title were wrong; the arXiv ID was right, and every architectural claim below was
+> re-checked against the source and holds. This is exactly the R-01 exception `TASKS.md`
+> records — "the three source papers were not re-audited against their arXiv originals" — so
+> treat the other two entries as carrying the same risk until they are checked the same way.
 
-- runs high- and low-resolution shallow-water simulations from matching initial
-  conditions;
-- uses separate initial-condition variants for training and validation;
-- normalizes velocity components from training data;
-- uses a U-Net with skip connections, residual blocks, Swish activations, average
-  pooling, and sub-pixel convolution;
-- trains with mini-batches and monitors a held-out simulation;
-- tests a new runtime coupling rather than only training snapshots.
+Relevant choices, verified against the arXiv v2 abstract and HTML full text on 2026-08-13
+except where marked:
 
-Difference in this project: the primary model produces a true 128 x 128 field from a
-32 x 32 input. The paper instead corrects a coarse state toward the fine solution
-restricted back to the coarse grid and later couples that correction into the solver.
+- corrects a coarse solution using a U-net-type network "trained to compute the difference
+  between solutions on both meshes", applied to "correct the coarse mesh every 12h";
+- two consecutive residual blocks per stage "with a swish activation function";
+- "average pooling layers with a kernel size of 4" for downsampling;
+- "sub-pixel convolutional blocks" with pixel shuffle for upsampling;
+- encoder output "concatenated with ... upsampled output of the decoder layer";
+- "convolutional layers of the U-net without biases", which is what gives the network the
+  property `Theta(0) = 0`;
+- runs high- and low-resolution shallow-water simulations from matching initial conditions;
+- *not re-verified in the full text*: separate IC variants for training and validation,
+  velocity normalization from training data, mini-batch training with a held-out simulation.
+
+Three differences in this project, each deliberate:
+
+- **Output.** The primary model here produces a true 128 x 128 field from a 32 x 32 input. The
+  paper's network maps a coarse field to a *corrected coarse field* — a same-grid correction,
+  later coupled into the solver at run time.
+- **No interpolated-input skip in the paper.** It has no global additive path from an
+  upsampled input, because it never produces a fine-grid field to add one to. This project's
+  outer `y_hat = bicubic(x) + R(x)` is **D006, a project decision**, not an adoption from this
+  paper. The nearest published lineage for adding an interpolated input is the VDSR family,
+  which is not pinned here.
+- **Bias-free convolutions.** The paper makes *all* U-net convolutions bias-free to guarantee
+  `Theta(0) = 0`. `docs/ARCHITECTURE.md` specifies bias-free ends only, so interior
+  convolutions here keep their biases and this project does **not** inherit that property. The
+  analogous guarantee here comes from the outer residual instead: zeroed weights reproduce the
+  bicubic baseline exactly. Average pooling is also kernel 2 here against the paper's 4.
 
 ## Interpretation rule
 

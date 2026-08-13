@@ -174,6 +174,33 @@ launched as diagnostics and a completed run's provenance is not rewritten to mat
 decision. `swe_sr.report` reads the freeze record, so it identifies them as T-03 correctly
 without altering them.
 
+## Ablations
+
+| ID | Status | Owner | Depends | Task | Gate |
+|---|---|---|---|---|---|
+| A-01 | ready-for-review | ML | I-02 | Ablation 3: outer bicubic residual against direct prediction, both architectures (D022) | - |
+
+A-01 evidence (2026-08-13, owner-requested). Both architectures retrained from scratch with the
+additive bicubic path removed, on the frozen manifest, frozen seed 20260812, and a schedule
+identical in every value to the frozen runs'. Parameter counts identical between arms, so exactly
+one factor varies. Both new runs pass `scripts/verify_independent.py`. Frozen T-03 artifacts and
+`docs/RESULTS.md` untouched; results in `docs/ABLATION_RESIDUAL.md`.
+
+Paired on trajectory, held-out test split, normalized macro MSE (negative favours direct):
+
+| arch | residual | direct | paired diff | 95% CI | excludes 0 | direct wins |
+|---|---:|---:|---:|---|---|---|
+| EDSR | 0.0830 | 0.0813 | -0.00166 | [-0.00315, -0.00033] | yes | 6 of 8 |
+| U-Net | 0.0400 | 0.0421 | +0.00212 | [-0.00023, +0.00504] | no | 3 of 8 |
+
+Direct prediction is better for EDSR by a paired 2.0% relative, and indistinguishable for the
+U-Net. Two secondary findings matter more than the headline: the gain is NOT at short lead time
+where the hypothesis predicted it -- both direct arms are slightly worse at 2 h, and EDSR's gain
+appears from 4.7 h onward -- and all four runs still lose to bicubic at 2 h, so the outer form is
+not the cause of that deficit and the objective remains the suspect. The crossover differs sharply
+by architecture: EDSR is behind out to between 4.7 and 7.4 h, the U-Net only to about 2.4 h.
+One seed per arm; treat as evidence on this split rather than an established property.
+
 ## Evaluation and final review
 
 | ID | Status | Owner | Depends | Task | Gate |
