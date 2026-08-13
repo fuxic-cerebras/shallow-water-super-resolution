@@ -27,7 +27,7 @@ correctly without its artifacts being altered.
 | Split | 32 train / 8 validation / 8 test trajectories, by seed ID (D004) |
 | Snapshots | 197 per trajectory, last step 4992, 34.86 h physical (D017) |
 | Shared time step | 25.139798 s (D003) |
-| Location | `data/staging/{raw,processed}/swe_gaussian_32x128_v1/` — see the note below |
+| Location | `data/{raw,processed}/swe_gaussian_32x128_v1/` (canonical, promoted 2026-08-13) |
 
 ### Frozen normalization (train split only, fine grid, destaggered; D019)
 
@@ -109,10 +109,28 @@ Both independently recomputed from the stored arrays by `scripts/verify_independ
 reimplements normalization, destaggering, every field metric, the mass diagnostic, and the
 aggregation protocol in plain numpy from the specification: **20 checks each, all passing**.
 
+## Promotion to the canonical path, 2026-08-13
+
+The release was moved from `data/staging/` to `data/{raw,processed}/` on owner instruction. Only
+the **location** changed; nothing frozen did. Re-verified after the move:
+
+- processed manifest hash is `af02e44f...`, identical to the frozen value above;
+- `python -m swe_sr.data.validate` passes 12/12 gates at the canonical path;
+- both frozen runs re-evaluate to identical numbers, U-Net 0.0400 and bicubic 0.4295.
+
+Because location is informational rather than frozen content, this is not a superseding change
+and no new freeze is required. Two details of how it was done matter for provenance:
+
+- The superseded development dataset was **moved aside, not deleted**, to
+  `data/raw/swe_gaussian_32x128_v1.superseded-dev-run-5a60ecc-dirty`. It was never the frozen
+  release: commit `5a60ecc...-dirty`, manifest hash `3a65583b...`, and no normalization block.
+  Keeping it rather than destroying it leaves the distinction auditable; it can be removed at any
+  time.
+- `data/staging/{raw,processed}/swe_gaussian_32x128_v1` are now **symlinks** to the canonical
+  paths. Both frozen runs record `data/staging/processed/.../manifest.json` in their own
+  `config.yaml`, and editing a completed run's config to match a later move would falsify its
+  provenance. The symlinks keep those recorded paths resolvable without touching the artifacts.
+
 ## Outstanding against this freeze
 
-- The dataset lives at `data/staging/` rather than the canonical `data/{raw,processed}/`. An
-  earlier development run with `-dirty` provenance occupies the canonical path and removing it
-  needs owner approval. The frozen manifest hash above identifies the correct release wherever
-  it sits; `TASKS.md` records the promotion commands.
 - The backup 64->256 pair (D-06, O-01) remains deferred and is outside this freeze.

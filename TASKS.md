@@ -68,19 +68,12 @@ and a train-only normalization recomputed and matched. Worst relative mass drift
 minimum total depth 98.6689 m, 197 frames over 34.86 h, splits disjoint across 48 unique
 IDs.
 
-OUTSTANDING, needs one owner action: the release currently sits at
-`data/staging/{raw,processed}/swe_gaussian_32x128_v1/` rather than the canonical
-`data/{raw,processed}/`. An earlier development run with `-dirty` provenance occupies the
-canonical path and removing it requires approval, and the generator refuses to overwrite a
-release by design. To promote:
-
-    rm -rf data/raw/swe_gaussian_32x128_v1 data/processed/swe_gaussian_32x128_v1
-    mv data/staging/raw/swe_gaussian_32x128_v1 data/raw/
-    mv data/staging/processed/swe_gaussian_32x128_v1 data/processed/
-    rmdir data/staging/raw data/staging/processed data/staging
-
-Nothing downstream is blocked: `docs/AGENT_WORKFLOW.md` has ML working against synthetic
-fixtures until data pass G3, and training is gated on G6 authorization regardless.
+PROMOTED 2026-08-13: the release now sits at the canonical
+`data/{raw,processed}/swe_gaussian_32x128_v1/`. Frozen manifest hash re-verified unchanged at
+`af02e44f...`, validation passes 12/12 there, and both frozen runs re-evaluate to identical
+numbers. The superseded development dataset was moved aside rather than deleted, and
+`data/staging/` holds symlinks so the frozen runs' recorded manifest paths stay resolvable
+without editing their artifacts. See the promotion section of `docs/EXPERIMENT_FREEZE.md`.
 
 G2 acceptance: both smoke pairs independently integrate matching ICs over matching
 domains and exact within-pair saved times. G3 acceptance: immutable manifests pass the

@@ -2,7 +2,7 @@
 
 Audited 2026-08-13 against the frozen T-03 experiment (`docs/EXPERIMENT_FREEZE.md`, D020).
 
-**Verdict: signed off with three stated exceptions.** Every claim below was checked rather than
+**Verdict: signed off with two remaining exceptions** (a third was cleared on 2026-08-13). Every claim below was checked rather than
 assumed, and where a check could not be completed that is recorded as an exception rather than
 waived. `docs/AGENT_WORKFLOW.md` forbids waiving a failed gate without a decision record; no gate
 failed, and the exceptions are scope and environment limits, not failures.
@@ -18,7 +18,7 @@ failed, and the exceptions are scope and environment limits, not failures.
 | Both checkpoints evaluated on a workload generated after training | **pass** | `fresh_id` and `ring_ood` for both frozen checkpoints, generated post-selection |
 | Nearest and bicubic use the identical test states and metrics | **pass** | asserted in `tests/test_evaluate.py`; all methods report identical snapshot counts |
 | A machine-readable metrics file and human-readable report exist | **pass** | `evaluation_*.json` and `docs/RESULTS.md` |
-| Commands and environment metadata suffice to reproduce every result | **pass, with exception 3** | fresh clone plus fresh venv reproduces the gate and the identical IC registry hash |
+| Commands and environment metadata suffice to reproduce every result | **pass** (exception 3 notes one limit) | fresh clone plus fresh venv reproduces the gate and the identical IC registry hash |
 
 ## 2. Research questions, answered from measured results
 
@@ -73,12 +73,13 @@ specification assumed:
 
 ## 5. Exceptions, stated rather than waived
 
-**Exception 1 — the dataset is not at its canonical path.** The frozen release lives at
-`data/staging/{raw,processed}/swe_gaussian_32x128_v1/`. An earlier development run with `-dirty`
-provenance occupies `data/{raw,processed}/` and removing it requires owner approval. The frozen
-manifest hash in `docs/EXPERIMENT_FREEZE.md` identifies the correct release wherever it sits, so
-this is tidiness rather than correctness, but the documented commands assume the canonical path.
-Promotion commands are in `TASKS.md`.
+**Exception 1 — CLEARED 2026-08-13.** The frozen release now sits at the canonical
+`data/{raw,processed}/swe_gaussian_32x128_v1/`, so the documented commands work as written.
+Re-verified after the move: the processed manifest hash is unchanged at `af02e44f...`, validation
+passes 12/12 at the canonical path, and both frozen runs re-evaluate to identical numbers. The
+superseded development dataset was moved aside rather than deleted, and `data/staging/` now holds
+symlinks so the frozen runs' recorded manifest paths stay resolvable without their artifacts being
+edited. See the promotion section of `docs/EXPERIMENT_FREEZE.md`.
 
 **Exception 2 — the backup 64->256 pair is deferred.** D-06 and O-01 are outside this sign-off by
 owner decision. Their tests are marked `backup` and deselected, not deleted, so coverage returns
