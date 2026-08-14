@@ -31,7 +31,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COLORS = {"bicubic": "#2ca02c", "edsr": "#1f77b4", "unet": "#d62728"}
+# Indexed directly below, not `.get`, so every model that can appear in a run must be here.
+COLORS = {"bicubic": "#2ca02c", "edsr": "#1f77b4", "unet": "#d62728", "convmixer": "#9467bd"}
 PAIR_LABELS = {
     "swe_gaussian_32x128_v1": "32->128  (trained on this)",
     "swe_gaussian_64x256_v1": "64->256  (transfer, never trained)",

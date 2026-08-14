@@ -1,0 +1,34 @@
+# ConvMixer-256/16 (k=9, p=1) x4, adapted to three normalized physical channels, per
+# docs/ARCHITECTURE.md and D023.
+#
+# Trockman & Kolter, "Patches Are All You Need?" (arXiv:2201.09792), used as documented
+# evidence rather than vendored code. Four deliberate departures, each required here: a
+# sub-pixel decoder in place of the classifier head, a 1x1 projection to the decoder width so
+# pixel shuffle does not dominate the parameter count, an outer bicubic residual for parity
+# with the other two models (D006), and patch_size 1 (see below).
+#
+# 1,720,067 parameters, between EDSR's 1.52 M and the U-Net's 1.93 M, so no result can be
+# attributed to capacity. Receptive field is 129 px at low resolution -- wider than both the
+# 32x32 and the 64x64 grid -- reached with no pooling anywhere. That is what this arm tests.
+
+name: convmixer
+architecture: convmixer
+
+model:
+  # h and d in the paper's ConvMixer-h/d naming.
+  features: 256
+  depth: 16
+  # The knee of the paper's CIFAR-10 kernel sweep, which is run at 32x32 -- exactly this
+  # project's low resolution: 3 -> 93.61%, 5 -> 95.11%, 7 -> 95.72%, 9 -> 95.88%, and only
+  # +0.28% beyond. Large kernels are the whole point; they also beat equal-parameter extra
+  # depth (256/8 k=9 at 707 K scores 95.88% against 256/24 k=3 at 1.67 M scoring 95.16%).
+  kernel_size: 9
+  # A pointwise stem rather than a true patch embedding. The same CIFAR-10 sweep prefers p=1
+  # at 32x32: p=2 costs 0.80% and p=4 costs 3.27%. Patching discards the high-frequency
+  # content super-resolution exists to recover, so all upsampling happens in the decoder.
+  patch_size: 1
+  # Decoder width, matching EDSR's `features` so the two architectures share a decoder and
+  # differ only in their body.
+  head_features: 64
+  scale: 4
+  channels: 3

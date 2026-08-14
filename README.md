@@ -189,9 +189,9 @@ measures the discrepancy: about 0.9 relative with rotation on, and reflections s
 0.048 even with rotation off because C-grid staggering places `u` on east faces. They remain
 available via config as a future ablation.
 
-### 4. The two models
+### 4. The three models
 
-Both share the outer form fixed by D006, so the comparison isolates the learned residual:
+All three share the outer form fixed by D006, so the comparison isolates the learned residual:
 
 ```
 y_hat = bicubic(x) + R_theta(x)        # bicubic: mode="bicubic", align_corners=True
@@ -218,10 +218,29 @@ grid and upsamples at the end: 3×3 head to 64 features; 16 residual blocks with
 normalization replaces it), random initialization (natural-image weights do not transfer to
 rotating fields), and the outer bicubic residual for parity with the U-Net.
 
-That structural contrast — refine at full resolution versus extract features coarse and upsample —
-is what the comparison tests. The parameter counts are within 1.27×, so it is about architecture
-rather than capacity. Both are resolution-generic: one set of weights accepts 32²→128² and
-64²→256², which is what made the transfer experiment possible.
+**ConvMixer ×4** — 1,720,067 parameters, `configs/model/convmixer_x4.yaml` (D023). *Isotropic*:
+one resolution end to end, no pooling anywhere. A `patch_size=1` stem lifts to 256 features, then
+16 identical blocks, each a 9×9 **depthwise** convolution with a residual followed by a pointwise
+1×1, with GELU and BatchNorm after each; then a 1×1 projection to 64 channels and EDSR's decoder
+(two pixel-shuffle ×2 stages, 3×3 tail). `k=9` and `p=1` come from the paper's CIFAR-10 ablations,
+which are run at 32×32 — exactly this project's low resolution.
+
+That gives it a **129 px receptive field at low resolution, with no downsampling** — wider than
+both the 32² and 64² grids, so one unit integrates the whole basin. EDSR's 16 stacked 3×3 blocks
+reach only ~33 px, barely one grid width, and the U-Net reaches basin scale only by pooling. The
+three models therefore separate three distinct inductive biases — pyramid, stacked-small-kernel,
+and isotropic-large-kernel — rather than three variations on one. That is what the comparison
+tests, at 1.52 M / 1.72 M / 1.93 M parameters, so it is about architecture rather than capacity.
+
+Two caveats stated up front. ConvMixer is the one model that **keeps BatchNorm**, contradicting
+EDSR's published finding that normalization harms super-resolution; D023 records why the arm
+keeps it rather than resolving the disagreement by assumption. Because BatchNorm couples samples
+while training, every path that reports a number calls `model.eval()` first, which restores exact
+per-sample independence. And large-kernel depthwise convolution is slow on CPU — this arm costs
+roughly 3× EDSR's wall clock per step.
+
+All three are resolution-generic: one set of weights accepts 32²→128² and 64²→256², which is what
+made the transfer experiment possible.
 
 ### 5. Training
 

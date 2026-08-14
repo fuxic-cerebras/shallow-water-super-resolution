@@ -1,0 +1,43 @@
+# ConvMixer x4 without normalization -- the A-03 arm of D023.
+#
+# Tests EDSR's central claim, that batch normalization degrades super-resolution, against
+# ConvMixer's, that BatchNorm is worth 1.44% over LayerNorm. These are the two papers this
+# project draws on, and on this point they disagree; the benchmark measures it rather than
+# picking a side.
+#
+# READ THIS BEFORE COMPARING. This is NOT a single-factor ablation of BatchNorm, and it cannot
+# be, because BatchNorm cannot simply be deleted from this architecture. ConvMixer's pointwise
+# stage is not residual, so 16 unnormalized non-residual layers compound: measured first-block
+# depthwise gradient norm is 1.1e-11 without normalization against 9.1e-02 with it, a
+# first/last ratio of 3.9e-07. That model does not train, and running it would measure only
+# that fact.
+#
+# So this arm changes three things together, which is exactly EDSR's recipe -- residual in
+# every block, residual scaling, no normalization:
+#
+#   normalization      batch -> none                first/last gradient ratio 3.9e-07  (dead)
+#   pointwise_residual false -> true                ratio 0.81, but activation std 49   (blows up)
+#   res_scale          1.0   -> 0.1                 ratio 0.90, activation std 0.41     (healthy)
+#
+# Read it as "ConvMixer as EDSR would have designed it" against "ConvMixer as published", not
+# as an isolated BatchNorm ablation. Capacity differs by 0.98% (1,703,171 against 1,720,067),
+# which is unavoidable: removing BatchNorm removes its affine parameters. The residual and the
+# scaling add none.
+#
+# Everything else -- width, depth, kernel, patch size, decoder, manifest, seed, schedule -- is
+# identical to configs/model/convmixer_x4.yaml.
+
+name: convmixer_nonorm
+architecture: convmixer
+
+model:
+  features: 256
+  depth: 16
+  kernel_size: 9
+  patch_size: 1
+  head_features: 64
+  scale: 4
+  channels: 3
+  normalization: none
+  pointwise_residual: true
+  res_scale: 0.1

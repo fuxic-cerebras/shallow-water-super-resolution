@@ -55,7 +55,13 @@ from swe_sr.training.config import model_config_for_run
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # Normalized channels have unit variance, so predicting the channel mean scores exactly 1.0.
 MEAN_PREDICTOR = 1.0
-COLORS = {"nearest": "#7f7f7f", "bicubic": "#2ca02c", "edsr": "#1f77b4", "unet": "#d62728"}
+COLORS = {
+    "nearest": "#7f7f7f",
+    "bicubic": "#2ca02c",
+    "edsr": "#1f77b4",
+    "unet": "#d62728",
+    "convmixer": "#9467bd",
+}
 
 
 def _load_methods(run_dirs: list[Path], *, include_nearest: bool = True) -> dict[str, Any]:

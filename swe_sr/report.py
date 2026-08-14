@@ -147,11 +147,16 @@ def build_report(run_dirs: list[Path], *, split: str = "test") -> str:
         "own evaluation, run on a shared host at a different time, so the column reflects host "
         "load as well as model cost. The bicubic row is the control: it is identical work in "
         "every run, so the spread across runs of *that* row bounds how much of any model-to-model "
-        "difference is measurement noise. For a like-for-like cost ratio use the `metrics.csv` "
-        "throughput, which is measured within a run over 30,000 steps on a fixed 16-thread "
-        "allocation: 79.8 against 42.0 samples/s averaged over epochs "
-        "(`summary.json` -> `projection.mean_samples_per_second`), so U-Net costs about **1.9x** "
-        "EDSR.",
+        "difference is measurement noise. For ConvMixer the column is actively misleading: it "
+        "reads 12.8 ms against EDSR's 32.9, but measuring all three back to back on one "
+        "16-thread m7a host gives EDSR 12.3, ConvMixer 19.4, and U-Net 21.1 ms/frame, so "
+        "ConvMixer is about **1.6x** EDSR's latency rather than a quarter of it "
+        "(`scripts/time_inference.py` reproduces this). For a like-for-like training cost ratio "
+        "use the `metrics.csv` throughput, measured within a run over 30,000 steps on a fixed "
+        "16-thread allocation: 79.8, 42.0, and 24.5 samples/s averaged over epochs for EDSR, "
+        "U-Net, and ConvMixer (`summary.json` -> `projection.mean_samples_per_second`), so "
+        "U-Net costs about **1.9x** EDSR and ConvMixer about **3.3x** -- large-kernel depthwise "
+        "convolution is inefficient on CPU.",
         "",
         "Reference: normalized channels have unit variance, so **predicting the channel mean "
         "scores 1.0**. A method near 1.0 carries no information about the target.",

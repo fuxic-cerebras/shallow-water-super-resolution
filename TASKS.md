@@ -101,6 +101,7 @@ what makes any reported gain over bicubic attributable to the learned residual.
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
 | I-02 | complete | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |
 | T-03 | ready-for-review | ML | I-02 | Run full primary U-Net and EDSR training and loss curves | G6 |
+| M-05 | in-progress | ML | I-02 | Add ConvMixer x4 as a third architecture and run it on the frozen schedule (D023) | G6 |
 
 G5 evidence (measured on Slurm jobs 295533 and 295561, node cpu-dy-x48-m7a-3, 16 threads,
 BF16 on AMD EPYC 9R14): both pilots ran 1,970 steps over 10 epochs with validation loss
@@ -179,6 +180,28 @@ without altering them.
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
 | A-01 | ready-for-review | ML | I-02 | Ablation 3: outer bicubic residual against direct prediction, both architectures (D022) | - |
+| A-02 | unclaimed | ML | M-05 | Follow-up: run the D022 direct arm for ConvMixer (`outer_baseline: none`); the flag works but no config or run ships | - |
+| A-03 | ready-for-review | ML | M-05 | ConvMixer normalization: BatchNorm as published against EDSR's unnormalized recipe, the one place D023 knowingly contradicts EDSR | - |
+| A-04 | unclaimed | ML | M-05 | Follow-up: ConvMixer `patch_size` > 1, a one-line config change the paper predicts should hurt at 32x32 | - |
+| A-05 | superseded | ML | M-05 | Regularization for ConvMixer. Withdrawn: the pilot's 8.1x train/val gap was its 8-trajectory subset, and the full run's gap is 1.79x, matching both other models. The A-03 arm underfits rather than overfits, so regularization is the wrong lever | - |
+| A-06 | unclaimed | ML | A-03 | Follow-up: sweep `res_scale` for the unnormalized arm. It was set to EDSR's published 0.1 untuned, and since it both enables training and damps every block it may account for part of A-03's 1.72x gap | - |
+
+A-03 evidence (2026-08-13, owner-requested; write-up in `docs/ABLATION_NORMALIZATION.md`). Tests
+whether EDSR's no-normalization finding transfers to ConvMixer. It does **not**. Held-out test
+split, paired on trajectory, positive favours BatchNorm:
+
+| arm | test MSE | 95% CI | paired diff | 95% CI | BatchNorm wins |
+|---|---:|---|---:|---|---|
+| BatchNorm as published | 0.0651 | [0.0366, 0.0963] | +0.04692 | [+0.01308, +0.08075] | 7 of 8 |
+| EDSR-style unnormalized | 0.1120 | [0.0772, 0.1469] | | | |
+
+Not a single-factor ablation, and it cannot be: removing BatchNorm alone is untrainable, because
+ConvMixer's pointwise stage is non-residual and the first block's gradient norm falls to 1.1e-11.
+The arm therefore adopts EDSR's whole recipe (residual everywhere, `res_scale=0.1`,
+unnormalized). BatchNorm winning is the unambiguous direction: it beat a design built to work
+without it. The unnormalized arm **underfits** — final train loss 0.1082 against 0.0103 — so
+BatchNorm's benefit here is optimization, not regularization. Both runs pass
+`scripts/verify_independent.py`.
 
 A-01 evidence (2026-08-13, owner-requested). Both architectures retrained from scratch with the
 additive bicubic path removed, on the frozen manifest, frozen seed 20260812, and a schedule
