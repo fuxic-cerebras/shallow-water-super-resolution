@@ -27,9 +27,14 @@ macro-averaged MSE with a 95% trajectory bootstrap interval:
 | nearest | 0 | 0.4301 | [0.3076, 0.5435] |
 | bicubic | 0 | 0.4295 | [0.3069, 0.5431] |
 | EDSR x4 | 1,517,571 | 0.0830 | [0.0543, 0.1129] |
+| ConvMixer x4 | 1,720,067 | 0.0651 | [0.0366, 0.0963] |
 | U-Net x4 | 1,930,208 | **0.0400** | [0.0261, 0.0544] |
 
 Normalized channels have unit variance, so predicting the channel mean scores exactly 1.0.
+
+ConvMixer is the third architecture (D023). Its best variant adds stochastic depth and reaches
+**0.0595**; `docs/COMPARISON.md` holds the training-curve comparison and the per-variant tables,
+`docs/ABLATION_NORMALIZATION.md` the BatchNorm question the arm settles.
 
 Three findings beyond the headline:
 
