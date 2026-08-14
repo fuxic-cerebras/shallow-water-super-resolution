@@ -84,8 +84,56 @@ flexibility) simply not biting in an architecture whose non-residual stage depen
 
 Two honest caveats. `res_scale` was chosen as EDSR's published 0.1 with no tuning, so some of
 the 1.72× gap may be that value rather than normalization per se; a sweep is the obvious
-follow-up. And the arm is not parameter-matched, though 0.98% is far too small to explain the
-gap.
+follow-up (A-06). And the arm is not parameter-matched, though 0.98% is far too small to
+explain the gap.
+
+## Why EDSR survives the same removal and ConvMixer does not
+
+"It underfits" is the symptom, not the reason, and the reason matters: if EDSR trains fine
+unnormalized at the same depth on the same data, something specific to ConvMixer must be doing
+the damage. Two things are, and both are structural.
+
+**1. ConvMixer's residual branch ends in a nonlinearity; EDSR's ends in a linear convolution.**
+GELU output is mostly positive, so `x + GELU(DW(x))` injects a positive-mean term at every one
+of this arm's 32 residual adds, and a DC offset accumulates with nothing to remove it. EDSR's
+`x + Conv(ReLU(Conv(x)))` terminates on a convolution whose weights are symmetric about zero,
+so the branch is zero-mean and adding it 16 times drifts nowhere. In the *published* ConvMixer
+block BatchNorm sits immediately after that GELU, so its mean subtraction is precisely the
+corrective; removing it leaves the network with no mean-centering anywhere.
+
+Activation mean through the trained bodies, on identical input (`|mean|/std` in brackets):
+
+| after | ConvMixer BatchNorm | ConvMixer no norm | EDSR no norm |
+|---|---:|---:|---:|
+| stem / head | +0.039 (0.04) | +0.152 (0.39) | -0.020 (0.03) |
+| block 4 | +0.216 (0.16) | +0.197 (0.42) | -0.019 (0.03) |
+| block 8 | -0.086 (0.10) | +0.245 (0.41) | -0.015 (0.02) |
+| block 12 | -0.114 (0.14) | +0.322 (0.37) | -0.033 (0.04) |
+| block 16 | +0.042 (0.04) | **+0.402 (0.41)** | -0.015 (0.02) |
+
+The unnormalized ConvMixer drifts monotonically to a DC offset worth 40% of its own signal
+amplitude. EDSR is flat at 2-4%. The drift is architectural, not learned: at initialization the
+same 16-block stack accumulates +0.365 with the branch ending in GELU and +0.002 with the
+branch ending in a linear convolution, about +0.023 per block either way of that difference.
+
+**2. Depthwise convolution never mixes channels, so per-channel scale drift is uncorrected.**
+A depthwise kernel scales each channel by its own private weights, and nothing re-equalizes
+them. EDSR's dense 3x3 sums over all 64 input channels at every layer, which averages channel
+scales as a side effect. Measured ratio of largest to smallest per-channel variance in the
+trained bodies: **500-4300x** for the unnormalized ConvMixer against **2-4x** for EDSR.
+BatchNorm is per-channel, so once again it is exactly the missing corrective.
+
+Both properties follow from ConvMixer being depthwise-separable and post-activation. **EDSR's
+finding is real but architecture-conditional:** "batch normalization degrades
+super-resolution" holds for dense residual networks whose branches end linear, and does not
+transfer to a design where BatchNorm is carrying the scale and mean control.
+
+One task-specific aggravator is worth naming. This model predicts a residual over bicubic on
+zero-mean normalized channels, so the target correction is itself ~zero-mean. A DC offset at
+40% of signal amplitude must therefore be cancelled downstream by the decoder, which spends
+capacity undoing an artifact instead of reconstructing detail. That is consistent with the
+observed failure being underfitting (final train loss 0.1082 against 0.0103) rather than
+overfitting, and it is why A-07 is the more interesting follow-up than A-06.
 
 ## What the arm gains
 

@@ -185,6 +185,7 @@ without altering them.
 | A-04 | unclaimed | ML | M-05 | Follow-up: ConvMixer `patch_size` > 1, a one-line config change the paper predicts should hurt at 32x32 | - |
 | A-05 | superseded | ML | M-05 | Regularization for ConvMixer. Withdrawn: the pilot's 8.1x train/val gap was its 8-trajectory subset, and the full run's gap is 1.79x, matching both other models. The A-03 arm underfits rather than overfits, so regularization is the wrong lever | - |
 | A-06 | unclaimed | ML | A-03 | Follow-up: sweep `res_scale` for the unnormalized arm. It was set to EDSR's published 0.1 untuned, and since it both enables training and damps every block it may account for part of A-03's 1.72x gap | - |
+| A-07 | unclaimed | ML | A-03 | Follow-up: pre-activation unnormalized ConvMixer, i.e. `x + s*DW(GELU(x))` so the residual branch ends linear as EDSR's does. Measured at init this removes the DC drift entirely (+0.002 against +0.365 after 16 blocks), so it separates "ConvMixer needs normalization" from "ConvMixer needs mean-centering" -- the more interesting question than A-06 | - |
 
 A-03 evidence (2026-08-13, owner-requested; write-up in `docs/ABLATION_NORMALIZATION.md`). Tests
 whether EDSR's no-normalization finding transfers to ConvMixer. It does **not**. Held-out test
