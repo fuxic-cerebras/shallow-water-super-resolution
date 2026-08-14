@@ -562,6 +562,46 @@ def test_invalid_configurations_are_rejected() -> None:
         ConvMixerConfig(normalization="layer")
     with pytest.raises(ValueError, match="res_scale must be"):
         ConvMixerConfig(res_scale=0.0)
+    with pytest.raises(ValueError, match="drop_path must be"):
+        ConvMixerConfig(drop_path=1.0)
+
+
+def test_stochastic_depth_is_free_random_in_training_and_absent_in_eval() -> None:
+    """A-05 arm 2. Three properties the regularizer must have to be a clean single factor.
+
+    It must add no parameters, so capacity is not a confound; it must actually do something in
+    training mode; and it must vanish in eval mode, because every path that reports a number
+    calls `model.eval()` and D023's reporting contract depends on inference being deterministic
+    and batch-independent.
+    """
+    assert count_parameters(build_convmixer(drop_path=0.1)) == count_parameters(build_convmixer())
+
+    model = build_convmixer(features=16, depth=8, kernel_size=5, head_features=8, drop_path=0.5)
+    inputs = torch.randn(4, 3, 32, 32)
+
+    model.train()
+    with torch.no_grad():
+        assert not torch.allclose(model(inputs), model(inputs)), (
+            "training-mode output was deterministic, so stochastic depth is inert"
+        )
+
+    model.eval()
+    with torch.no_grad():
+        first, second = model(inputs), model(inputs)
+    torch.testing.assert_close(first, second, rtol=0, atol=0)
+    # And still batch-independent, the property the reporting paths rely on.
+    with torch.no_grad():
+        individually = torch.cat([model(inputs[i : i + 1]) for i in range(4)])
+    torch.testing.assert_close(first, individually, rtol=1e-5, atol=1e-6)
+
+
+def test_stochastic_depth_ramps_linearly_with_depth() -> None:
+    """Early blocks are kept almost always, the last is dropped at exactly `drop_path`."""
+    model = build_convmixer(depth=5, drop_path=0.4)
+    probabilities = [b.drop_path.probability for b in model.body]  # type: ignore[union-attr]
+    assert probabilities == pytest.approx([0.0, 0.1, 0.2, 0.3, 0.4])
+    # Depth 1 must not divide by zero.
+    assert build_convmixer(depth=1, drop_path=0.4).body[0].drop_path.probability == 0.0  # type: ignore[union-attr]
 
 
 def test_the_shipped_nonorm_config_differs_only_where_it_must() -> None:

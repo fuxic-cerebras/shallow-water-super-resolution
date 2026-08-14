@@ -101,6 +101,9 @@ class ConvMixerConfig:
     # which is what makes an unnormalized arm trainable rather than merely untested.
     pointwise_residual: bool = False
     res_scale: float = 1.0
+    # Stochastic depth on the residual branches, ramped linearly from 0 at the first block to
+    # this value at the last, as DeiT and timm do. 0.0 reproduces the published model. A-05.
+    drop_path: float = 0.0
     # D006 by default. `none` is the D022 ablation arm, which for ConvMixer means the isotropic
     # body must produce the absolute field rather than a correction to bicubic. No config ships
     # for it yet; the flag works because the base class implements it.
@@ -129,6 +132,8 @@ class ConvMixerConfig:
             )
         if not 0.0 < self.res_scale <= 1.0:
             raise ValueError(f"res_scale must be in (0, 1], got {self.res_scale}")
+        if not 0.0 <= self.drop_path < 1.0:
+            raise ValueError(f"drop_path must be in [0, 1), got {self.drop_path}")
 
     @property
     def receptive_field(self) -> int:
@@ -139,6 +144,40 @@ class ConvMixerConfig:
         the other two, and `docs/ARCHITECTURE.md` quotes it.
         """
         return self.patch_size * (1 + self.depth * (self.kernel_size - 1))
+
+
+class _DropPath(nn.Module):
+    """Stochastic depth: drop a whole residual branch, per sample, while training.
+
+    Only ever wraps a *residual* branch, so a dropped sample falls back to the identity path
+    rather than losing its signal. Off in eval mode, which keeps the D023 reporting contract
+    intact: every path that reports a number calls `model.eval()`, so inference is
+    deterministic and batch-independent regardless of this.
+
+    Added for A-05. ConvMixer reaches the U-Net's *final* training loss by epoch 21 (0.0148
+    against 0.0145) yet generalizes 34% worse, and its train/validation gap grows to 5.24x
+    against the U-Net's 2.75x, so the binding constraint is generalization rather than
+    capacity. The ConvMixer paper notes DeiT used stochastic depth while it did not.
+    """
+
+    def __init__(self, probability: float) -> None:
+        super().__init__()
+        if not 0.0 <= probability < 1.0:
+            raise ValueError(f"drop probability must be in [0, 1), got {probability}")
+        self.probability = probability
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        if not self.training or self.probability == 0.0:
+            return inputs
+        keep = 1.0 - self.probability
+        # One Bernoulli draw per sample, broadcast over channels and space, then rescaled so
+        # the expected activation is unchanged and eval needs no correction.
+        shape = (inputs.shape[0],) + (1,) * (inputs.ndim - 1)
+        mask = inputs.new_empty(shape).bernoulli_(keep)
+        return inputs * mask / keep
+
+    def extra_repr(self) -> str:
+        return f"probability={self.probability}"
 
 
 class _MixerBlock(nn.Module):
@@ -156,10 +195,12 @@ class _MixerBlock(nn.Module):
         *,
         pointwise_residual: bool = False,
         res_scale: float = 1.0,
+        drop_path: float = 0.0,
     ) -> None:
         super().__init__()
         self.pointwise_residual = pointwise_residual
         self.res_scale = res_scale
+        self.drop_path = _DropPath(drop_path)
         self.depthwise = nn.Sequential(
             nn.Conv2d(features, features, kernel_size, groups=features, padding="same"),
             nn.GELU(),
@@ -173,10 +214,13 @@ class _MixerBlock(nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         # Typed locals: nn.Sequential.__call__ is untyped, so returning it directly is Any.
-        mixed: torch.Tensor = inputs + self.res_scale * self.depthwise(inputs)
+        mixed: torch.Tensor = inputs + self.drop_path(self.res_scale * self.depthwise(inputs))
         branch: torch.Tensor = self.pointwise(mixed)
         if self.pointwise_residual:
-            return mixed + self.res_scale * branch
+            dropped: torch.Tensor = self.drop_path(self.res_scale * branch)
+            return mixed + dropped
+        # Not a residual path, so stochastic depth must not touch it: dropping here would zero
+        # the signal outright rather than fall back to an identity.
         return branch
 
 
@@ -213,8 +257,14 @@ class ConvMixerSR(ResidualSuperResolution):
                     config.normalization,
                     pointwise_residual=config.pointwise_residual,
                     res_scale=config.res_scale,
+                    # Linear ramp: early blocks are kept almost always, deep ones dropped most.
+                    # `depth - 1` in the denominator so the last block sees exactly `drop_path`;
+                    # guarded because a depth-1 body would divide by zero.
+                    drop_path=(
+                        config.drop_path * index / (config.depth - 1) if config.depth > 1 else 0.0
+                    ),
                 )
-                for _ in range(config.depth)
+                for index in range(config.depth)
             ]
         )
         # Narrow to the decoder width before pixel shuffle; see the module docstring.
