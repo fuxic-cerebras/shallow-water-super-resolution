@@ -12,6 +12,7 @@ generated dataset.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,7 @@ from swe_sr.models.common import (
     nearest_baseline,
     upsample,
 )
+from swe_sr.models.convmixer import ConvMixerConfig, ConvMixerSR, build_convmixer
 from swe_sr.models.edsr import EDSR, EDSRConfig, build_edsr
 from swe_sr.models.unet import ResidualUNet, UNetConfig, build_unet
 
@@ -43,8 +45,22 @@ def _small_edsr() -> EDSR:
     return EDSR(EDSRConfig(features=16, blocks=2))
 
 
+def _small_convmixer() -> ConvMixerSR:
+    return ConvMixerSR(ConvMixerConfig(features=16, depth=2, kernel_size=5, head_features=8))
+
+
+# Keyed by architecture name so the contract suites and the checkpoint tests that need to
+# rebuild a matching instance stay in sync. Adding an architecture here opts it into every
+# parametrized test below, which is the point.
+_FIXTURES: dict[str, Callable[[], ResidualSuperResolution]] = {
+    "unet": _small_unet,
+    "edsr": _small_edsr,
+    "convmixer": _small_convmixer,
+}
+
+
 def _models() -> list[tuple[str, ResidualSuperResolution]]:
-    return [("unet", _small_unet()), ("edsr", _small_edsr())]
+    return [(name, build()) for name, build in _FIXTURES.items()]
 
 
 # -- The frozen batch contract (D016) -------------------------------------------------
@@ -82,10 +98,18 @@ def test_wrong_channel_count_is_rejected(name: str, model: ResidualSuperResoluti
 
 @pytest.mark.parametrize("name,model", _models(), ids=lambda v: v if isinstance(v, str) else "")
 def test_batch_dimension_is_independent(name: str, model: ResidualSuperResolution) -> None:
-    """Per-sample outputs must not depend on batch composition.
+    """Per-sample outputs must not depend on batch composition, in eval mode.
 
-    Guards against any accidental cross-sample coupling, which batch normalization would
-    introduce and which neither architecture should have.
+    Eval mode is the contract, not train mode, and the distinction became real with ConvMixer
+    (D023): its BatchNorm layers genuinely couple samples while training, then switch to fixed
+    running statistics under `eval()` and recover exact per-sample independence. The U-Net and
+    EDSR have no normalization at all and satisfy this in either mode.
+
+    What makes the weaker contract sufficient is that every path in this repository which
+    reports a number calls `model.eval()` first -- `evaluate.py:114`, `train.py:218`,
+    `evaluate_fresh.py:112`, `scripts/verify_independent.py:203`, `scripts/analyze_transfer.py:80`,
+    `scripts/compare_ablation.py:89`, `scripts/plot_final.py:76`, `scripts/plot_pilot.py:138,223`.
+    `test_convmixer_batch_coupling_is_confined_to_training_mode` pins both halves.
     """
     model.eval()
     inputs = torch.randn(3, 3, 32, 32)
@@ -296,7 +320,7 @@ def test_checkpoint_reload_reproduces_inference_bitwise(
     path = tmp_path / f"{name}.pt"
     torch.save(model.state_dict(), path)
 
-    restored = _small_unet() if name == "unet" else _small_edsr()
+    restored = _FIXTURES[name]()
     restored.load_state_dict(torch.load(path, weights_only=True))
     restored.eval()
     with torch.no_grad():
@@ -314,7 +338,7 @@ def test_a_freshly_initialized_model_differs_before_loading(
     Otherwise the bitwise match above could be passing for a trivial reason.
     """
     model.eval()
-    other = _small_unet() if name == "unet" else _small_edsr()
+    other = _FIXTURES[name]()
     other.eval()
     inputs = torch.randn(1, 3, 32, 32)
     with torch.no_grad():
@@ -335,6 +359,24 @@ def test_published_configurations_match_the_architecture_document() -> None:
     assert unet.activation_name == "silu"
     assert unet.bias_free_ends is True
 
+    # ConvMixer-256/16 with k=9, p=1 (D023).
+    convmixer = ConvMixerConfig()
+    assert (convmixer.features, convmixer.depth) == (256, 16)
+    assert (convmixer.kernel_size, convmixer.patch_size) == (9, 1)
+    assert convmixer.head_features == 64, "the decoder must stay EDSR-width"
+
+
+def test_convmixer_sees_the_whole_basin_at_both_resolutions() -> None:
+    """The property that distinguishes this arm, asserted rather than asserted-in-prose.
+
+    Each block widens the receptive field by `k - 1`, so the published depth reaches 129 px
+    with no pooling anywhere. Both required input grids are smaller than that, which is what
+    lets one unit integrate the entire domain -- the U-Net needs a pyramid to do the same and
+    EDSR (~33 px) cannot do it at all.
+    """
+    assert ConvMixerConfig().receptive_field == 129
+    assert all(low <= 129 for low, _ in REQUIRED_SHAPES)
+
 
 def test_bias_free_ends_on_the_unet() -> None:
     """docs/ARCHITECTURE.md specifies bias-free input and output convolutions."""
@@ -343,22 +385,131 @@ def test_bias_free_ends_on_the_unet() -> None:
     assert model.tail.bias is None
 
 
-def test_edsr_uses_relu_and_unet_uses_silu() -> None:
-    """The activation difference is deliberate and part of what the comparison tests."""
+def test_each_architecture_uses_its_published_activation() -> None:
+    """The activation differences are deliberate and part of what the comparison tests."""
     edsr_activations = {type(m) for m in build_edsr().modules()}
     unet_activations = {type(m) for m in build_unet().modules()}
+    convmixer_activations = {type(m) for m in build_convmixer().modules()}
     assert nn.ReLU in edsr_activations and nn.SiLU not in edsr_activations
     assert nn.SiLU in unet_activations and nn.ReLU not in unet_activations
+    # GELU as published. The paper measures it as near-irrelevant (95.88% against 95.51% for
+    # ReLU on CIFAR-10), so this pins the choice rather than claiming it matters.
+    assert nn.GELU in convmixer_activations and nn.ReLU not in convmixer_activations
 
 
-def test_no_batch_or_instance_normalization_anywhere() -> None:
-    """Neither reference architecture uses normalization layers, and batch statistics would
-    couple samples and make evaluation depend on batch composition."""
+def test_no_normalization_in_the_two_reference_architectures() -> None:
+    """The U-Net and EDSR use no normalization, and that must not drift.
+
+    Scoped to those two on purpose. EDSR's published finding is that batch normalization
+    degrades super-resolution, and the U-Net follows suit, so a normalization layer appearing
+    in either would be a regression. ConvMixer is deliberately excluded: it keeps BatchNorm as
+    published (D023), which `test_convmixer_keeps_batchnorm_as_published` asserts positively so
+    the exclusion cannot quietly become an accident.
+    """
     for model in (build_unet(), build_edsr()):
         for module in model.modules():
             assert not isinstance(module, nn.BatchNorm2d | nn.InstanceNorm2d | nn.GroupNorm), (
                 f"unexpected normalization layer {type(module).__name__}"
             )
+
+
+def test_convmixer_keeps_batchnorm_as_published() -> None:
+    """The positive control for the exclusion above (D023).
+
+    ConvMixer's BatchNorm is a measured choice, not an oversight: the paper reports 1.44% on
+    CIFAR-10 for BatchNorm over LayerNorm (Table 3). It is also the one place this project
+    accepts train-mode batch coupling, so removing it silently would change what the arm means
+    while leaving every other test green.
+
+    Two per block plus one in the stem.
+    """
+    model = build_convmixer()
+    normalizations = [m for m in model.modules() if isinstance(m, nn.BatchNorm2d)]
+    assert len(normalizations) == 2 * model.config.depth + 1, len(normalizations)
+
+
+def test_the_nonorm_arm_removes_every_normalization_layer() -> None:
+    """The A-03 arm (D023): ConvMixer as EDSR would have designed it."""
+    model = build_convmixer(normalization="none", pointwise_residual=True, res_scale=0.1)
+    assert not any(isinstance(m, nn.BatchNorm2d) for m in model.modules())
+    # Capacity differs by exactly BatchNorm's affine parameters and nothing else; the residual
+    # and the scaling are free. 33 layers x 2 x 256 = 16,896.
+    assert count_parameters(build_convmixer()) - count_parameters(model) == 16_896
+
+
+def test_the_nonorm_arm_is_batch_independent_in_both_modes() -> None:
+    """With no batch statistics anywhere, the train/eval distinction disappears.
+
+    This is the property the published arm gives up and the reason the D023 caveat exists, so
+    it is worth asserting that the alternative genuinely does not have it.
+    """
+    model = build_convmixer(
+        features=16,
+        depth=2,
+        kernel_size=5,
+        head_features=8,
+        normalization="none",
+        pointwise_residual=True,
+        res_scale=0.1,
+    )
+    inputs = torch.randn(3, 3, 32, 32)
+    for mode in ("train", "eval"):
+        getattr(model, mode)()
+        with torch.no_grad():
+            batched = model(inputs)
+            individually = torch.cat([model(inputs[i : i + 1]) for i in range(3)])
+        torch.testing.assert_close(batched, individually, rtol=1e-5, atol=1e-6)
+
+
+def test_removing_normalization_alone_would_not_train() -> None:
+    """Why the A-03 arm changes three things rather than one, pinned as a measurement.
+
+    ConvMixer's pointwise stage is not residual, so without normalization 16 such layers
+    compound and gradient never reaches the early blocks. This is the evidence for that claim,
+    and it is a test so that a future simplification to a "clean" one-factor ablation fails
+    here instead of silently producing a dead run.
+    """
+
+    def first_to_last_gradient_ratio(**overrides: object) -> float:
+        model = build_convmixer(features=64, depth=16, kernel_size=5, head_features=16, **overrides)
+        model.train()
+        model.zero_grad(set_to_none=True)
+        ((model(torch.randn(4, 3, 32, 32)) - torch.randn(4, 3, 128, 128)) ** 2).mean().backward()
+        norms = [float(b.depthwise[0].weight.grad.norm()) for b in model.body]  # type: ignore[union-attr]
+        return norms[0] / norms[-1]
+
+    published = first_to_last_gradient_ratio()
+    naive = first_to_last_gradient_ratio(normalization="none")
+    stabilized = first_to_last_gradient_ratio(
+        normalization="none", pointwise_residual=True, res_scale=0.1
+    )
+    assert naive < 1e-3, f"expected vanishing gradients without normalization, got {naive:.2e}"
+    assert 0.01 < published < 100.0, published
+    assert 0.01 < stabilized < 100.0, stabilized
+
+
+def test_convmixer_batch_coupling_is_confined_to_training_mode() -> None:
+    """BatchNorm couples samples while training and stops doing so under `eval()`.
+
+    Both halves matter. The first proves the layers are live rather than inert; the second is
+    the property every reported number depends on, since evaluation always runs under `eval()`.
+    """
+    model = _small_convmixer()
+    inputs = torch.randn(3, 3, 32, 32)
+
+    model.train()
+    with torch.no_grad():
+        batched = model(inputs)
+        individually = torch.cat([model(inputs[i : i + 1]) for i in range(3)])
+    assert not torch.allclose(batched, individually, rtol=1e-4, atol=1e-5), (
+        "train-mode ConvMixer was batch-independent, so its BatchNorm is not doing anything"
+    )
+
+    model.eval()
+    with torch.no_grad():
+        batched = model(inputs)
+        individually = torch.cat([model(inputs[i : i + 1]) for i in range(3)])
+    torch.testing.assert_close(batched, individually, rtol=1e-5, atol=1e-6)
 
 
 def test_published_models_are_a_reasonable_size() -> None:
@@ -368,8 +519,24 @@ def test_published_models_are_a_reasonable_size() -> None:
     """
     unet_parameters = count_parameters(build_unet())
     edsr_parameters = count_parameters(build_edsr())
+    convmixer_parameters = count_parameters(build_convmixer())
     assert 1.0e6 < unet_parameters < 4.0e6, unet_parameters
     assert 1.0e6 < edsr_parameters < 4.0e6, edsr_parameters
+    assert 1.0e6 < convmixer_parameters < 4.0e6, convmixer_parameters
+
+
+def test_the_three_architectures_have_comparable_capacity() -> None:
+    """The comparison is about inductive bias, so capacity must not be the confound.
+
+    ConvMixer is sized to sit between the other two rather than to match either exactly; the
+    exact count is pinned so a hyperparameter edit cannot move it without this failing.
+    """
+    assert count_parameters(build_convmixer()) == 1_720_067
+    assert (
+        count_parameters(build_edsr())
+        < count_parameters(build_convmixer())
+        < count_parameters(build_unet())
+    )
 
 
 def test_invalid_configurations_are_rejected() -> None:
@@ -381,6 +548,101 @@ def test_invalid_configurations_are_rejected() -> None:
         UNetConfig(stage_features=(32,))
     with pytest.raises(ValueError, match="unknown activation"):
         UNetConfig(activation_name="mish")
+    with pytest.raises(ValueError, match="depth must be"):
+        ConvMixerConfig(depth=0)
+    # An even kernel cannot be centred, and `padding="same"` would reject it later with a much
+    # less informative message.
+    with pytest.raises(ValueError, match="kernel_size must be odd"):
+        ConvMixerConfig(kernel_size=8)
+    # The decoder composes x2 pixel-shuffle stages, so scale * patch_size must be a power of
+    # two or the output would not land on the target grid.
+    with pytest.raises(ValueError, match="patch_size must be a power of two"):
+        ConvMixerConfig(patch_size=3)
+    with pytest.raises(ValueError, match="unknown normalization"):
+        ConvMixerConfig(normalization="layer")
+    with pytest.raises(ValueError, match="res_scale must be"):
+        ConvMixerConfig(res_scale=0.0)
+    with pytest.raises(ValueError, match="drop_path must be"):
+        ConvMixerConfig(drop_path=1.0)
+
+
+def test_stochastic_depth_is_free_random_in_training_and_absent_in_eval() -> None:
+    """A-05 arm 2. Three properties the regularizer must have to be a clean single factor.
+
+    It must add no parameters, so capacity is not a confound; it must actually do something in
+    training mode; and it must vanish in eval mode, because every path that reports a number
+    calls `model.eval()` and D023's reporting contract depends on inference being deterministic
+    and batch-independent.
+    """
+    assert count_parameters(build_convmixer(drop_path=0.1)) == count_parameters(build_convmixer())
+
+    model = build_convmixer(features=16, depth=8, kernel_size=5, head_features=8, drop_path=0.5)
+    inputs = torch.randn(4, 3, 32, 32)
+
+    model.train()
+    with torch.no_grad():
+        assert not torch.allclose(model(inputs), model(inputs)), (
+            "training-mode output was deterministic, so stochastic depth is inert"
+        )
+
+    model.eval()
+    with torch.no_grad():
+        first, second = model(inputs), model(inputs)
+    torch.testing.assert_close(first, second, rtol=0, atol=0)
+    # And still batch-independent, the property the reporting paths rely on.
+    with torch.no_grad():
+        individually = torch.cat([model(inputs[i : i + 1]) for i in range(4)])
+    torch.testing.assert_close(first, individually, rtol=1e-5, atol=1e-6)
+
+
+def test_stochastic_depth_ramps_linearly_with_depth() -> None:
+    """Early blocks are kept almost always, the last is dropped at exactly `drop_path`."""
+    model = build_convmixer(depth=5, drop_path=0.4)
+    probabilities = [b.drop_path.probability for b in model.body]  # type: ignore[union-attr]
+    assert probabilities == pytest.approx([0.0, 0.1, 0.2, 0.3, 0.4])
+    # Depth 1 must not divide by zero.
+    assert build_convmixer(depth=1, drop_path=0.4).body[0].drop_path.probability == 0.0  # type: ignore[union-attr]
+
+
+def test_the_shipped_nonorm_config_differs_only_where_it_must() -> None:
+    """The A-03 arm must differ from the published config in exactly three documented values.
+
+    Guards the same property the D022 configs guard: if a stray hyperparameter drifted between
+    the arms, any measured difference could be that instead of the normalization design.
+    """
+    import yaml
+
+    from swe_sr.models import build_model_from_config
+
+    root = Path(__file__).resolve().parents[2] / "configs" / "model"
+    published = yaml.safe_load((root / "convmixer_x4.yaml").read_text())
+    nonorm = yaml.safe_load((root / "convmixer_nonorm_x4.yaml").read_text())
+    assert nonorm["architecture"] == published["architecture"]
+    assert nonorm["name"] == "convmixer_nonorm", "the arm must not reuse the published name"
+
+    expected = {"normalization": "none", "pointwise_residual": True, "res_scale": 0.1}
+    for key, value in expected.items():
+        assert nonorm["model"].pop(key) == value
+    assert nonorm["model"] == published["model"], (
+        "convmixer_nonorm_x4.yaml differs from convmixer_x4.yaml beyond the normalization design"
+    )
+
+    name, model = build_model_from_config(root / "convmixer_nonorm_x4.yaml")
+    assert name == "convmixer_nonorm"
+    assert count_parameters(model) == 1_703_171
+
+
+def test_convmixer_rejects_a_grid_its_patches_cannot_tile() -> None:
+    """Unreachable at the shipped `patch_size=1`, which is why it is worth asserting.
+
+    Nobody should "fix" a guard that looks dead. At p=2 a 33x33 input has a remainder and must
+    fail loudly rather than silently truncating a row of the basin.
+    """
+    assert build_convmixer().size_multiple == 1
+    patched = build_convmixer(patch_size=2, features=16, depth=2)
+    assert tuple(patched(torch.randn(1, 3, 32, 32)).shape) == (1, 3, 128, 128)
+    with pytest.raises(ValueError, match="divisible by the patch size"):
+        patched(torch.randn(1, 3, 33, 33))
 
 
 def test_unet_rejects_a_size_it_cannot_pool() -> None:

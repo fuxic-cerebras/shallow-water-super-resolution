@@ -101,6 +101,7 @@ what makes any reported gain over bicubic attributable to the learned residual.
 | V-04 | unclaimed | Verifier | T-02 | Audit training determinism, metric path, checkpoint selection, and budget | G5 |
 | I-02 | complete | Lead | V-02,V-04 | Freeze primary manifest, commit, configs, seed, metrics, and checkpoint rule | G6 |
 | T-03 | ready-for-review | ML | I-02 | Run full primary U-Net and EDSR training and loss curves | G6 |
+| M-05 | in-progress | ML | I-02 | Add ConvMixer x4 as a third architecture and run it on the frozen schedule (D023) | G6 |
 
 G5 evidence (measured on Slurm jobs 295533 and 295561, node cpu-dy-x48-m7a-3, 16 threads,
 BF16 on AMD EPYC 9R14): both pilots ran 1,970 steps over 10 epochs with validation loss
@@ -179,6 +180,52 @@ without altering them.
 | ID | Status | Owner | Depends | Task | Gate |
 |---|---|---|---|---|---|
 | A-01 | ready-for-review | ML | I-02 | Ablation 3: outer bicubic residual against direct prediction, both architectures (D022) | - |
+| A-02 | unclaimed | ML | M-05 | Follow-up: run the D022 direct arm for ConvMixer (`outer_baseline: none`); the flag works but no config or run ships | - |
+| A-03 | ready-for-review | ML | M-05 | ConvMixer normalization: BatchNorm as published against EDSR's unnormalized recipe, the one place D023 knowingly contradicts EDSR | - |
+| A-04 | unclaimed | ML | M-05 | Follow-up: ConvMixer `patch_size` > 1, a one-line config change the paper predicts should hurt at 32x32 | - |
+| A-05 | ready-for-review | ML | M-05 | Regularization for ConvMixer: stochastic depth, weight decay, and a capacity cut. Reinstated after the withdrawal below was shown wrong. Write-up in `docs/COMPARISON.md` | - |
+| A-06 | unclaimed | ML | A-03 | Follow-up: sweep `res_scale` for the unnormalized arm. It was set to EDSR's published 0.1 untuned, and since it both enables training and damps every block it may account for part of A-03's 1.72x gap | - |
+| A-07 | unclaimed | ML | A-03 | Follow-up: pre-activation unnormalized ConvMixer, i.e. `x + s*DW(GELU(x))` so the residual branch ends linear as EDSR's does. Measured at init this removes the DC drift entirely (+0.002 against +0.365 after 16 blocks), so it separates "ConvMixer needs normalization" from "ConvMixer needs mean-centering" -- the more interesting question than A-06 | - |
+| A-08 | unclaimed | ML | A-05 | Follow-up: a long skip from the stem into the decoder projection (+16,384 params, 0.95%). ConvMixer's deficit below 12 h lead time is 0.0341-0.0367 against the U-Net's 0.0178 and is unchanged by weight decay, stochastic depth, *and* a capacity cut alike, so it is structural rather than a regularization failure. This is the one thing the U-Net has that ConvMixer lacks | - |
+
+A-05 evidence (2026-08-14; write-up and both comparison tables in `docs/COMPARISON.md`, figures
+in `viz/compare_architectures.png` and `viz/compare_convmixer_variants.png`). Three arms, each
+varying one factor against the published run. Paired on trajectory, held-out test split,
+negative favours the arm:
+
+| arm | params | test | paired diff | 95% CI | excludes 0 |
+|---|---:|---:|---:|---|---|
+| + stochastic depth 0.1 | 1,720,067 | 0.0595 | -0.00561 | [-0.00968, -0.00153] | yes |
+| 256/12 | 1,368,835 | 0.0633 | -0.00179 | [-0.00790, +0.00433] | no |
+| + weight decay 1e-2 | 1,720,067 | 0.0645 | -0.00062 | [-0.00370, +0.00245] | no |
+
+Only stochastic depth resolves: 8.6% better, and the train/validation gap at the selected
+checkpoint falls 3.61x -> 2.48x, tighter than the U-Net's 2.73x. Weight decay tests a badly
+chosen value rather than the lever -- AdamW shrinks by `lr * wd` per step, so 1e-2 at lr 1e-4 is
+a per-step factor of 1e-6 and cosine decay removes even that (A-06). Cutting capacity did not
+reduce the gap at all (5.09x), which together with stochastic depth working points at a missing
+noise regularizer rather than excess parameters; 256/12 is still the efficiency result, matching
+the published arm at 20% fewer parameters and 1.65x throughput. The gain is entirely above 24 h
+lead time (-21%); the short-lead-time deficit is untouched by all three arms, which is why A-08
+exists. The earlier withdrawal of this task was wrong: it read the full run's epoch-8 gap of
+1.79x as representative, but the gap grows to 5.24x by early stopping.
+
+A-03 evidence (2026-08-13, owner-requested; write-up in `docs/ABLATION_NORMALIZATION.md`). Tests
+whether EDSR's no-normalization finding transfers to ConvMixer. It does **not**. Held-out test
+split, paired on trajectory, positive favours BatchNorm:
+
+| arm | test MSE | 95% CI | paired diff | 95% CI | BatchNorm wins |
+|---|---:|---|---:|---|---|
+| BatchNorm as published | 0.0651 | [0.0366, 0.0963] | +0.04692 | [+0.01308, +0.08075] | 7 of 8 |
+| EDSR-style unnormalized | 0.1120 | [0.0772, 0.1469] | | | |
+
+Not a single-factor ablation, and it cannot be: removing BatchNorm alone is untrainable, because
+ConvMixer's pointwise stage is non-residual and the first block's gradient norm falls to 1.1e-11.
+The arm therefore adopts EDSR's whole recipe (residual everywhere, `res_scale=0.1`,
+unnormalized). BatchNorm winning is the unambiguous direction: it beat a design built to work
+without it. The unnormalized arm **underfits** — final train loss 0.1082 against 0.0103 — so
+BatchNorm's benefit here is optimization, not regularization. Both runs pass
+`scripts/verify_independent.py`.
 
 A-01 evidence (2026-08-13, owner-requested). Both architectures retrained from scratch with the
 additive bicubic path removed, on the frozen manifest, frozen seed 20260812, and a schedule

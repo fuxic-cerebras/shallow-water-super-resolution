@@ -97,12 +97,59 @@ Adapt the baseline configuration from `fuxic-cerebras/EDSR-PyTorch`:
 Do not use the repository's RGB `MeanShift`; dataset normalization replaces it. Start
 from random initialization because natural-image weights do not share field semantics.
 
-## Why both models
+## ConvMixer x4
 
-| Model | Expected strength | Main risk |
-|---|---|---|
-| U-Net | Multi-scale context and direct high-resolution refinement | Higher memory and compute at 128 x 128 |
-| EDSR | Efficient residual feature extraction mostly on the coarse grid | May miss basin-scale context or over-smooth coupled fields |
+Adapt `ConvMixer-256/16` from Trockman & Kolter, "Patches Are All You Need?"
+(arXiv:2201.09792), per D023:
+
+- patch-embedding stem, `patch_size` 1, 256 features;
+- 16 repetitions of the ConvMixer block, at constant resolution throughout;
+- each block is a **9 x 9 depthwise** convolution with a residual, then a **pointwise
+  1 x 1** convolution, each followed by GELU and BatchNorm;
+- the residual wraps the depthwise convolution only, as published;
+- 1 x 1 projection to 64 channels;
+- two pixel-shuffle x2 blocks for x4 output;
+- three physical input and output channels;
+- an outer residual added to bicubic interpolation for parity with the other two models.
+
+The single residual placement is measured rather than incidental: adding a second one
+around the pointwise convolution costs 1.10% on CIFAR-10 (paper Table 3).
+
+`k=9` and `p=1` come from the paper's **CIFAR-10** ablations rather than its ImageNet
+ones, because those are run at 32 x 32 — exactly this project's low resolution. `k=9`
+is the knee of the kernel sweep (3 -> 93.61%, 5 -> 95.11%, 7 -> 95.72%, 9 -> 95.88%,
+and only +0.28% beyond), and `p=1` is that sweep's preference at this input size
+(p=2 costs 0.80%, p=4 costs 3.27%). Patching would discard the high-frequency content
+super-resolution exists to recover, so the stem is a pointwise lift and all upsampling
+happens in the decoder.
+
+Two departures are structural. The classifier head (global average pooling plus a
+linear layer) would destroy the spatial field, so it is replaced by EDSR's decoder. The
+1 x 1 projection before that decoder is required for capacity reasons:
+`PixelShuffleUpsampler(features)` costs `36h^2 + 4h`, so a full-width 256 decoder would
+be 4.7 M parameters, larger than the entire body. Projecting first makes the decoder
+byte-identical to EDSR's, so the two differ in body and not decoder.
+
+Unlike the other two models, this one **keeps BatchNorm**, as published. That
+contradicts EDSR's finding and is deliberate; D023 records the reasoning and the
+eval-mode caveat.
+
+## Why these three models
+
+| Model | Receptive field | Expected strength | Main risk |
+|---|---|---|---|
+| U-Net | Global, via pooling | Multi-scale context and direct high-resolution refinement | Higher memory and compute at 128 x 128 |
+| EDSR | ~33 px | Efficient residual feature extraction mostly on the coarse grid | May miss basin-scale context or over-smooth coupled fields |
+| ConvMixer | 129 px, no pooling | Basin-scale context at constant resolution, so no pyramid to lose detail through | Large-kernel depthwise convolution is slow on CPU; BatchNorm is a known risk in super-resolution |
+
+The three separate distinct inductive biases at comparable capacity — pyramid,
+stacked-small-kernel, and isotropic-large-kernel — rather than three variations on one.
+ConvMixer's 129 px exceeds both required input grids (32 and 64), so one unit integrates
+the entire basin without any downsampling; EDSR cannot reach basin scale at all, and the
+U-Net only reaches it by pooling.
+
+Parameter counts are 1,517,571 (EDSR), 1,720,067 (ConvMixer), and 1,930,208 (U-Net), so
+the comparison is capacity-ordered and no result can be attributed to size alone.
 
 The comparison is empirical. Parameter count, peak memory, throughput, and inference
 latency must be reported alongside accuracy.

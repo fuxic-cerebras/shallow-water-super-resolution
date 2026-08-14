@@ -1,0 +1,25 @@
+# ConvMixer-256/12 x4 -- arm 3 of A-05: less capacity, on purpose.
+#
+# Identical to configs/model/convmixer_x4.yaml except `depth`. The published arm overfits (see
+# convmixer_droppath_x4.yaml for the numbers), so cutting capacity is the most direct response
+# available and it is also about 25% cheaper per step.
+#
+# 1,368,835 parameters, which is *below* EDSR's 1,517,571, so this arm is deliberately outside
+# the capacity-ordered band D023 established for the published comparison. That is acceptable
+# for an improvement search and must be stated when reporting: if it wins, it wins with fewer
+# parameters than any other learned arm, which strengthens rather than weakens the finding.
+#
+# Receptive field falls from 129 px to 97 px, still wider than both the 32x32 and 64x64 grids,
+# so the isotropic global-context property this architecture exists to test is preserved.
+
+name: convmixer_d12
+architecture: convmixer
+
+model:
+  features: 256
+  depth: 12
+  kernel_size: 9
+  patch_size: 1
+  head_features: 64
+  scale: 4
+  channels: 3

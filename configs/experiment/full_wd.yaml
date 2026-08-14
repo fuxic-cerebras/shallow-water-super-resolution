@@ -1,0 +1,27 @@
+# Full stage (docs/EXPERIMENT_PLAN.md): the fixed 32/8/8 trajectory split and the documented
+# defaults, with early stopping.
+#
+# Every value here is the schedule the plan fixes. Both models run this same config with the
+# same manifest and the same primary seed, so the comparison differs only in architecture.
+#
+# If a run is projected to exceed 10 hours, the plan requires capping BOTH models at the same
+# number of optimizer steps and recording the budget adjustment before running -- not capping
+# one model and letting the other continue.
+
+stage: full
+learning_rate: 1.0e-4
+weight_decay: 1.0e-2
+warmup_steps: 500
+batch_size: 8
+gradient_clip_norm: 1.0
+max_epochs: 100
+max_steps: 30000
+early_stopping_patience: 15
+seed: 20260812
+precision: bf16
+augmentations: []
+
+# A-05 arm 1: weight decay raised from 1.0e-6, which is effectively none, to 1.0e-2. Every other
+# value is identical to full.yaml. The ConvMixer paper used real AdamW weight decay; this project
+# did not, and the ConvMixer arm is the one that overfits (train/validation gap 5.24x against the
+# U-Net's 2.75x), so it is the obvious first lever. Untuned.

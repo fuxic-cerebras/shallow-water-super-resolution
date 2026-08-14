@@ -20,11 +20,14 @@ from swe_sr.models.common import (
     nearest_baseline,
     upsample,
 )
+from swe_sr.models.convmixer import ConvMixerConfig, ConvMixerSR, build_convmixer
 from swe_sr.models.edsr import EDSR, EDSRConfig, build_edsr
 from swe_sr.models.unet import ResidualUNet, UNetConfig, build_unet
 
 __all__ = [
     "EDSR",
+    "ConvMixerConfig",
+    "ConvMixerSR",
     "EDSRConfig",
     "Interpolation",
     "ResidualSuperResolution",
@@ -32,6 +35,7 @@ __all__ = [
     "UNetConfig",
     "bicubic_baseline",
     "build_baseline",
+    "build_convmixer",
     "build_edsr",
     "build_model",
     "build_model_from_config",
@@ -42,7 +46,7 @@ __all__ = [
     "upsample",
 ]
 
-ARCHITECTURES = {"unet": build_unet, "edsr": build_edsr}
+ARCHITECTURES = {"unet": build_unet, "edsr": build_edsr, "convmixer": build_convmixer}
 BASELINES = {"nearest": nearest_baseline, "bicubic": bicubic_baseline}
 
 

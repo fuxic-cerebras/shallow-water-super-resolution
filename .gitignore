@@ -10,6 +10,9 @@
 # re-include anything beneath an excluded directory.
 /data/*
 /runs/
+# Slurm batch output from scripts/slurm_convmixer.sbatch. Experiment logs, so not committed;
+# the numbers that matter are already in each run directory's metrics.csv and summary.json.
+/logs/
 
 # The IC registry is the one exception: it is not generated data but the immutable shared
 # contract that every dataset manifest references by hash, and that both resolution pairs

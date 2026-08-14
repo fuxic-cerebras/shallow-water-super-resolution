@@ -397,6 +397,139 @@
   - Model names are `unet_direct` and `edsr_direct`, which flow into run IDs, so an ablation run
     can never be mistaken for a frozen T-03 run in any artifact or figure.
 
+## D023 - ConvMixer as a third architecture
+
+- Status: accepted
+- Decision: add ConvMixer (Trockman & Kolter, arXiv:2201.09792) as a third trained
+  architecture, `ConvMixer-256/16` with `k=9, p=1`, on the frozen manifest, seed, and schedule.
+  Authorized by the project owner on 2026-08-13. The frozen T-03 U-Net and EDSR runs are **not**
+  retrained; the third arm is added to `docs/RESULTS.md` alongside them.
+- Reason: the two existing models span a narrow slice of design space, and the axis they leave
+  untested is the one this problem is most likely to care about. The U-Net reaches basin-scale
+  context by pooling down a pyramid. EDSR never downsamples, but 16 stacked 3 x 3 convolutions
+  see only about 33 px — barely one grid width of a 32 x 32 input. Neither isolates the
+  question of whether a **global receptive field without any pooling** helps in a closed
+  rotating basin where gravity waves reflect off the walls. ConvMixer is the minimal probe for
+  that: it is isotropic, holding one resolution end to end, and buys range purely through
+  unusually large depthwise kernels. At the chosen depth its receptive field is 129 px at low
+  resolution, wider than both the 32 x 32 and 64 x 64 grids, so one unit integrates the whole
+  domain with no pyramid at all. It is also about six lines of PyTorch, so the arm is cheap to
+  add and hard to get subtly wrong.
+- Consequences:
+  - **1,720,067 parameters**, between EDSR's 1,517,571 and the U-Net's 1,930,208. The comparison
+    stays about inductive bias rather than capacity, and
+    `test_the_three_architectures_have_comparable_capacity` pins both the exact count and the
+    ordering.
+  - Hyperparameters are taken from the paper's **CIFAR-10** ablations rather than its ImageNet
+    ones, because those are run at 32 x 32 — exactly this project's low resolution. `k=9` is the
+    knee of the kernel sweep (3 -> 93.61%, 5 -> 95.11%, 7 -> 95.72%, 9 -> 95.88%, +0.28% beyond),
+    and the paper separately shows large kernels beat equal-parameter extra depth. `p=1` is the
+    same sweep's preference at that input size (p=2 costs 0.80%, p=4 costs 3.27%); patching also
+    discards precisely the high-frequency content super-resolution exists to recover, so the stem
+    is a pointwise lift and all upsampling is deferred to the decoder. `patch_size` remains a
+    config field so p>1 is a one-line follow-up ablation.
+  - **BatchNorm is retained as published, and this contradicts EDSR.** EDSR's central claim is
+    that batch normalization degrades super-resolution, and `swe_sr/models/edsr.py` and
+    `unet.py` both omit normalization for that reason. ConvMixer's own ablation measures 1.44%
+    on CIFAR-10 for BatchNorm over LayerNorm, so the layer is doing real work in this
+    architecture. Rather than resolve the disagreement by assumption, the arm keeps the
+    published block and lets the benchmark measure it. If ConvMixer underperforms, BatchNorm is
+    a live confound and the honest follow-up is a normalization ablation, not a retroactive
+    reinterpretation.
+  - The cost of that choice is bounded and tested. A training-mode forward pass genuinely
+    couples samples within a batch. Every path in this repository that reports a number calls
+    `model.eval()` first, which switches BatchNorm to fixed running statistics and restores
+    exact per-sample independence, so no reported metric depends on batch composition.
+    `test_convmixer_batch_coupling_is_confined_to_training_mode` asserts both halves — that the
+    coupling is real while training, and that it is gone under `eval()` — so neither can drift.
+  - `test_no_batch_or_instance_normalization_anywhere` was renamed to
+    `test_no_normalization_in_the_two_reference_architectures`. Its assertion is unchanged and
+    was never weakened: it only ever iterated `build_unet()` and `build_edsr()`, so the old name
+    overstated its scope. `test_convmixer_keeps_batchnorm_as_published` is the positive
+    counterpart, so ConvMixer's exclusion cannot quietly become an accident.
+  - The D006 guarantee still holds for this arm: zeroed weights reproduce bicubic **exactly**.
+    BatchNorm does not break it, because zeroing `gamma` and `beta` makes every normalization
+    emit exact zero, and the existing bitwise test covers ConvMixer through the shared fixture.
+  - Checkpoints now carry buffers that matter. `state_dict` includes BatchNorm running
+    statistics and `torch.save`/`load_state_dict` round-trip them, which the bitwise reload test
+    covers. One consequence to watch: the cross-resolution transfer evaluation applies running
+    statistics estimated at 32 x 32 to a 64 x 64 input. Inputs are identically normalized so the
+    statistics should transport, but if ConvMixer's transfer degrades markedly more than the
+    other two models', that is a finding about BatchNorm and belongs in `docs/TRANSFER.md`
+    rather than being treated as a defect.
+  - Two departures from the paper are structural to the task and not optional. The classifier
+    head (global average pooling plus a linear layer) would destroy the spatial field, so it is
+    replaced by EDSR's decoder. A 1 x 1 projection to 64 channels precedes that decoder because
+    `PixelShuffleUpsampler(features)` costs `36h^2 + 4h`; at h=256 a full-width decoder would be
+    4.7 M parameters, larger than the entire body. Projecting first makes the decoder
+    byte-identical to EDSR's, so the two architectures differ in their body and not their
+    decoder.
+  - The model name is `convmixer` — lowercase and underscore-free — which the run-ID regex in
+    `swe_sr/report.py` and the config-path fallback in `swe_sr/training/config.py` both require.
+  - The D022 direct-prediction arm is **not** shipped for ConvMixer. `outer_baseline="none"`
+    works via the base class, but no config or run exists for it; it is recorded as a follow-up
+    in `TASKS.md` rather than silently implied.
+- Pilot evidence (2026-08-13, Slurm job 301044, node `cpu-dy-x48-m7a-2`, 16 threads, BF16),
+  which revises the risk assessment above and is recorded because it was surprising:
+
+  | arch | pilot train | pilot val | gap |
+  |---|---:|---:|---:|
+  | EDSR | 0.1726 | 0.3069 | 1.8x |
+  | U-Net | 0.1711 | 0.3028 | 1.8x |
+  | ConvMixer | 0.0713 | 0.5786 | 8.1x |
+
+  ConvMixer fits the training data 2.4x better than EDSR and generalizes 1.7x worse. **The
+  cause is not BatchNorm.** Scoring one checkpoint on one validation split with only the
+  normalization mode varying gives 0.5287 under running statistics against 0.4334 under batch
+  statistics — a factor of 1.22, not 8 — and the running statistics are well conditioned
+  (`running_var` spanning 9.3e-4 to 0.97 across all 33 layers, 1,823 batches tracked). The
+  BatchNorm concern recorded above is therefore real but second order, and the eval-mode
+  contract is doing its job. `scripts/diagnose_convmixer_bn.py` reproduces this.
+
+  The likely mechanism is regularization, and it is in the paper's own Table 3: its two largest
+  effects are not architectural but augmentation — removing RandAugment costs 2.96% and removing
+  random scaling 9.64%, each larger than kernel size, patch size, or the normalization choice.
+  ConvMixer is a high-capacity model the paper controls with heavy augmentation. This project
+  runs with augmentation off (D018, because reflections are not symmetries of a rotating
+  beta-plane) and weight decay at 1e-6, so the arm operates in exactly the regime the paper
+  identifies as most damaging to it. That is a property of the comparison, not a defect, and it
+  must be stated when the arm is reported: this benchmark tests ConvMixer *unregularized*.
+
+  The full run proceeds on the identical schedule regardless, because changing weight decay or
+  augmentation for one architecture alone would break the single-factor discipline the
+  comparison depends on. The pilot trains on 8 of 32 trajectories and pilot numbers do not
+  predict full ones (EDSR went 0.3069 pilot to 0.0830 full test), so the full run is the
+  measurement of record. `TASKS.md` A-05 carries the regularization ablation as the honest
+  follow-up.
+
+  The full run settled the question: at epoch 8 of 39 ConvMixer reached validation 0.0653 with
+  a train/validation gap of 1.79x, indistinguishable from EDSR's and the U-Net's 1.8x. The
+  pilot's 8.1x was an artifact of its 8-trajectory subset and nothing more.
+- **A-03, the unnormalized arm** (`configs/model/convmixer_nonorm_x4.yaml`, owner-requested
+  2026-08-13). Read it as "ConvMixer as EDSR would have designed it" versus "ConvMixer as
+  published", **not** as a single-factor BatchNorm ablation. It cannot be the latter, and that
+  is itself the first result: BatchNorm cannot simply be deleted from this architecture,
+  because the pointwise stage is not residual and 16 unnormalized non-residual layers compound.
+  Measured first-block depthwise gradient norm, against the last block:
+
+  | variant | first/last gradient | activation std | trainable |
+  |---|---:|---:|---|
+  | BatchNorm, as published | 13 | 1.000 | yes |
+  | normalization removed, nothing else | 3.9e-07 | 0.021 | no, gradient dies |
+  | + residual around the pointwise | 0.81 | 49.5 | no, activations diverge |
+  | + residual and `res_scale=0.1` | 0.90 | 0.409 | yes |
+
+  So the arm changes three values together — `normalization: none`, `pointwise_residual: true`,
+  `res_scale: 0.1` — which is precisely EDSR's recipe of residual-everywhere, scaled,
+  unnormalized. Running the naive one-factor deletion would have measured only that an
+  unnormalized non-residual stack does not train, which is already known.
+  `test_removing_normalization_alone_would_not_train` pins the measurement so that a future
+  "simplification" to a clean one-factor ablation fails loudly rather than producing a dead run.
+  Capacity is 1,703,171 against 1,720,067, a 0.98% difference that is unavoidable because
+  removing BatchNorm removes its affine parameters; the residual and the scaling add none.
+  The arm gains one property the published one lacks: with no batch statistics anywhere it is
+  batch-independent in training mode too, not only under `eval()`.
+
 ## Template for new decisions
 
 ```text

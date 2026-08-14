@@ -31,7 +31,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COLORS = {"bicubic": "#2ca02c", "edsr": "#1f77b4", "unet": "#d62728"}
+# Indexed directly below, not `.get`, so every model that can appear in a run must be here.
+# Same validated palette as scripts/plot_final.py and scripts/plot_comparison.py: categorical
+# hues for learned models, recessive grey for the interpolation reference.
+COLORS = {
+    "bicubic": "#898781",
+    "unet": "#2a78d6",
+    "edsr": "#eb6834",
+    "convmixer": "#1baf7a",
+    "convmixer_droppath": "#2a78d6",
+    "convmixer_d12": "#4a3aa7",
+    "convmixer_nonorm": "#898781",
+}
 PAIR_LABELS = {
     "swe_gaussian_32x128_v1": "32->128  (trained on this)",
     "swe_gaussian_64x256_v1": "64->256  (transfer, never trained)",

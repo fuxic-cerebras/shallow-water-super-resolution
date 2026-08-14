@@ -1,0 +1,28 @@
+# ConvMixer x4 with stochastic depth -- arm 2 of A-05.
+#
+# Identical to configs/model/convmixer_x4.yaml except `drop_path`. Parameter count is
+# unchanged at 1,720,067: stochastic depth adds no weights, so this arm varies exactly one
+# factor and capacity is not a confound.
+#
+# Motivation is measured, not assumed. The published arm reaches the U-Net's *final* training
+# loss by epoch 21 (0.0148 against 0.0145) and still generalizes 34% worse, with its
+# train/validation gap growing from 3.61x at its best epoch to 5.24x by early stopping, against
+# the U-Net's 2.75x and EDSR's 1.26x. So the binding constraint is generalization, not capacity
+# or optimization -- which is why this arm regularizes rather than enlarging anything. The
+# ConvMixer paper notes DeiT used stochastic depth while it did not.
+#
+# 0.1 is the conventional starting value for a 16-block stack, ramped linearly to that at the
+# last block. Untuned.
+
+name: convmixer_droppath
+architecture: convmixer
+
+model:
+  features: 256
+  depth: 16
+  kernel_size: 9
+  patch_size: 1
+  head_features: 64
+  scale: 4
+  channels: 3
+  drop_path: 0.1
