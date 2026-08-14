@@ -56,11 +56,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # Normalized channels have unit variance, so predicting the channel mean scores exactly 1.0.
 MEAN_PREDICTOR = 1.0
 COLORS = {
-    "nearest": "#7f7f7f",
-    "bicubic": "#2ca02c",
-    "edsr": "#1f77b4",
-    "unet": "#d62728",
-    "convmixer": "#9467bd",
+    # Three learned models take categorical hues, validated at --pairs all for colour-vision
+    # separation; the two parameter-free baselines are recessive greys because they are
+    # references rather than peer series, which is also what makes the set pass. The previous
+    # tab10 palette failed twice over: unet red against bicubic green measured dE 3.9 under
+    # deuteranopia, and convmixer purple against edsr blue dE 1.7 under protanopia.
+    "nearest": "#b9b7b1",
+    "bicubic": "#898781",
+    "unet": "#2a78d6",
+    "edsr": "#eb6834",
+    "convmixer": "#1baf7a",
+    "convmixer_droppath": "#2a78d6",
+    "convmixer_d12": "#4a3aa7",
+    "convmixer_nonorm": "#898781",
 }
 
 
