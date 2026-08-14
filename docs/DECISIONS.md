@@ -357,7 +357,7 @@
     protocol already prescribes. This is an additive schema change; the frozen in-distribution
     artifacts are **not** regenerated to acquire the field, because re-running them would also
     rewrite host-load-dependent `seconds_per_frame` inside a frozen record.
-  - Findings are recorded in `docs/TRANSFER.md`, including one that revises how earlier results
+  - Findings are recorded in `docs/experiments/O-07-cross-resolution-transfer.md`, including one that revises how earlier results
     should be read: both models lose to bicubic at short lead time on the trained pair too, which
     the aggregate concealed.
 
@@ -368,13 +368,13 @@
   `docs/EXPERIMENT_PLAN.md` ("outer bicubic residual versus direct prediction") for both
   architectures on the frozen manifest, seed, and schedule. Authorized by the project owner on
   2026-08-13. The frozen T-03 runs and `docs/RESULTS.md` are **not** touched; the comparison is
-  written to `docs/ABLATION_RESIDUAL.md`.
+  written to `docs/experiments/A-01-residual-vs-direct.md`.
 - Reason: D006 fixed the outer residual for two reasons, and only one of them was ever
   demonstrated. The comparison-fairness reason is a proof: zeroed weights reproduce bicubic
   exactly, so any gain over bicubic is attributable to the learned residual. The optimization
   reason was never tested against a direct-prediction control. The owner's specific hypothesis
   is that for EDSR the additive bicubic path may impose a bias the network then has to fight,
-  which is consistent with the `r`/`c` decomposition in `docs/TRANSFER.md` measuring correction
+  which is consistent with the `r`/`c` decomposition in `docs/experiments/O-07-cross-resolution-transfer.md` measuring correction
   magnitudes up to 9.5x too large at short lead time — exactly where an unconditionally added
   baseline does the most damage.
 - Consequences:
@@ -455,7 +455,7 @@
     covers. One consequence to watch: the cross-resolution transfer evaluation applies running
     statistics estimated at 32 x 32 to a 64 x 64 input. Inputs are identically normalized so the
     statistics should transport, but if ConvMixer's transfer degrades markedly more than the
-    other two models', that is a finding about BatchNorm and belongs in `docs/TRANSFER.md`
+    other two models', that is a finding about BatchNorm and belongs in `docs/experiments/O-07-cross-resolution-transfer.md`
     rather than being treated as a defect.
   - Two departures from the paper are structural to the task and not optional. The classifier
     head (global average pooling plus a linear layer) would destroy the spatial field, so it is
@@ -529,6 +529,65 @@
   removing BatchNorm removes its affine parameters; the residual and the scaling add none.
   The arm gains one property the published one lacks: with no batch statistics anywhere it is
   batch-independent in training mode too, not only under `eval()`.
+
+## D024 - Documented numbers are generated, and documents are organized by lifetime
+
+- Status: accepted
+- Decision: no measured number is written into prose by hand. Every run the documentation cites
+  is registered in `docs/results/runs.yaml`; `python -m swe_sr.results --write` builds
+  `docs/results/index.json` from those runs' artifacts; `python -m swe_sr.docgen render` renders
+  the documents' tables from that index into marker-delimited blocks; and
+  `python -m swe_sr.docgen check` runs in `scripts/check.sh`, so a stale table fails the build.
+  Alongside it, documents are organized by how they change over time rather than by topic, per
+  `docs/DOCUMENTATION.md`.
+- Reason: the documentation was growing faster than the work, and the cost was not page count
+  but duplication. Measured against the tree before this decision, the headline `0.0400`
+  appeared in eight files and `0.0830` in nine, each transcribed by hand, so re-running an arm
+  required editing every one of them consistently with nothing to detect a missed edit. The
+  drift had already started: `README.md` claimed the decision log ran "D001 to D021" when D023
+  existed, and its documentation index omitted two write-ups that its own prose linked. `runs/`
+  is gitignored, so neither CI nor a reader could re-derive any of it — which is why the index
+  is committed rather than generated on demand.
+- Consequences:
+  - **A found defect, which is the argument for the whole change.** Converting the A-05 and A-03
+    paired tables to generated blocks showed their confidence intervals were paired
+    t-intervals, `mean +/- t_{7,0.975} * SE`, not the percentile bootstrap over trajectories
+    that `docs/VALIDATION.md` mandates and that every other paired interval in the project uses.
+    On these eight pairs the t-interval is symmetric by construction and 10-20% wider. Every
+    mean difference, verdict, and win count is unchanged, so no conclusion moves, but two
+    documents had been stating an interval computed by an undocumented estimator. Nothing in the
+    repository could have caught that while the numbers were typed.
+  - Three kinds of document, and the kind determines what may grow. **Contracts**
+    (`docs/PROJECT_SPEC.md`, `docs/DATASET.md`, `docs/ARCHITECTURE.md`,
+    `docs/EXPERIMENT_PLAN.md`, `docs/VALIDATION.md`) are normative, contain no results, and stay
+    short. **Ledgers** (this file, `TASKS.md`, `docs/EXPERIMENT_FREEZE.md`) are append-only and
+    are *expected* to grow without bound, provided each entry is bounded and an index sits at
+    the top. **Experiment write-ups** (`docs/experiments/`) are immutable once their arm lands:
+    a new result is a new file, never an edit to an existing write-up.
+  - Two kinds of block. A `generated` block is rewritten by `render`. A `verified` block is
+    checked and **never** rewritten, which is what `docs/EXPERIMENT_FREEZE.md`'s results table
+    is: silently rewriting a freeze to agree with whatever the artifacts now say would destroy
+    the only property a freeze provides. A mismatch there demands a new decision and a new
+    freeze, not an edit.
+  - `docs/results/index.json` is committed although it is generated. It is not experiment data
+    in the sense `.gitignore` excludes — no arrays, no checkpoints, no logs, only the ~150 KB of
+    scalars the documents cite — and committing it is what lets CI verify a table in a clone
+    with no `runs/`. The same reasoning as the IC registry exception.
+  - `seconds_per_frame` is excluded from the index. It is wall-clock time under unknown host
+    load, it is not comparable across arms, and it has already misled once, so it does not
+    belong in a file whose purpose is to be cited. Like-for-like timing comes from
+    `scripts/time_inference.py` or from a single run's `metrics.csv`.
+  - `swe_sr/report.py` no longer regexes run IDs out of `docs/EXPERIMENT_FREEZE.md` to decide
+    which runs are frozen; it reads the registry. The old pattern made a prose file load
+    bearing, and it could not match a model name containing an underscore.
+  - Four hygiene rules now fail CI: a backticked repository path that does not resolve, a
+    document no other document references, a `DNNN` citation with no entry in this file, and a
+    run ID cited in prose but absent from the registry. The path rule deliberately skips paths
+    rooted outside this repository, because `docs/RESEARCH_MATRIX.md` correctly cites upstream
+    files that do not exist here.
+  - `docs/RESULTS.md` remains a wholly generated *file* rather than a set of blocks, and is not
+    covered by `docgen check`: it reports `ms/frame`, so regenerating it on a differently loaded
+    host produces a diff that means nothing. Numbers cited elsewhere come from the index.
 
 ## Template for new decisions
 

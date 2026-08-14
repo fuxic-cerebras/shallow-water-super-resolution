@@ -1,0 +1,88 @@
+# The documentation index, in one place (D024).
+#
+# `python -m swe_sr.docgen render` renders `docs/README.md`, plus the pointer blocks in
+# `README.md` and `CLAUDE.md`, from this file. There used to be two hand-maintained copies of
+# this list and they had already drifted: `README.md`'s table omitted two write-ups its own prose
+# linked to, and described the decision log as "D001 to D021" when D023 existed.
+#
+# `swe_sr/docgen.py` fails if a file under `docs/` is neither listed here nor an experiment
+# write-up, so the omission that started this cannot recur.
+#
+# Sections are ordered as rendered. `docs/experiments/` is deliberately NOT listed: it is the
+# category that grows with the work, so it is globbed and each entry's title is read from its
+# heading. Adding an experiment therefore touches no index at all.
+
+sections:
+  - id: contracts
+    title: Contracts
+    note: >
+      Normative. What must be true, with no results in them. A change to one of these is a
+      decision record.
+    reading_order: true
+    files:
+      - file: PROJECT_SPEC.md
+        summary: goal, scope, research questions, definition of done, open questions
+      - file: DATASET.md
+        summary: resolution pairs, IC family, splits, normalization, storage contract
+      - file: ARCHITECTURE.md
+        summary: repository layout, batch contract, the three model designs, run directory
+      - file: EXPERIMENT_PLAN.md
+        summary: baselines, loss, optimizer schedule, staged runs, artifacts
+      - file: VALIDATION.md
+        summary: data gates, metric definitions, aggregation protocol, negative tests
+
+  - id: guides
+    title: Guides
+    note: How the thing works and how to run it. Extracted from `README.md` so it stays a front door.
+    files:
+      - file: PIPELINE.md
+        summary: the six stages, what each consumes and writes, and the rule behind each choice
+      - file: REPRODUCE.md
+        summary: the command-by-command rerun, measured timings, and what a rerun cannot reproduce
+      - file: DOCUMENTATION.md
+        summary: how documentation here is organized, and which numbers are generated rather than typed
+      - file: AGENT_WORKFLOW.md
+        summary: the multi-agent team, waves, gates, and the handoff lifecycle
+
+  - id: ledgers
+    title: Ledgers
+    note: >
+      Append-only, and expected to grow without bound. Nobody reads these front to back; they are
+      searched by identifier.
+    files:
+      - file: DECISIONS.md
+        summary: every project decision with its reason and consequences
+      - file: EXPERIMENT_FREEZE.md
+        summary: "the frozen T-03 record: hashes, commits, seeds, checkpoint digests"
+      - file: ../TASKS.md
+        summary: task status and per-gate evidence
+      - file: SIGNOFF.md
+        summary: "the I-03 audit: what is verified, what is outstanding"
+
+  - id: generated
+    title: Generated
+    note: Written by a tool from run artifacts. Never edited by hand.
+    files:
+      - file: RESULTS.md
+        summary: comparison table, lead-time breakdown, fresh workloads, limitations
+      - file: results/index.json
+        summary: the committed scalars every document's tables are rendered from
+      - file: results/runs.yaml
+        summary: the run registry, and the only place a run ID is written by hand
+
+  - id: references
+    title: References
+    note: What the design was taken from, and where it was checked.
+    files:
+      - file: REFERENCES.md
+        summary: solver references and the three supplied papers, with an interpretation rule
+      - file: RESEARCH_MATRIX.md
+        summary: reference-to-design matrix, verified against pinned upstream commits
+
+  - id: experiments
+    title: Experiments
+    note: >
+      One file per experiment, immutable once its arm has landed. A new result is a new file,
+      never an edit to an existing write-up. Globbed from `docs/experiments/`, so this list needs
+      no maintenance.
+    glob: experiments/*.md

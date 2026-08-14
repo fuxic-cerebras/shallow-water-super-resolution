@@ -183,12 +183,12 @@ without altering them.
 | A-02 | unclaimed | ML | M-05 | Follow-up: run the D022 direct arm for ConvMixer (`outer_baseline: none`); the flag works but no config or run ships | - |
 | A-03 | ready-for-review | ML | M-05 | ConvMixer normalization: BatchNorm as published against EDSR's unnormalized recipe, the one place D023 knowingly contradicts EDSR | - |
 | A-04 | unclaimed | ML | M-05 | Follow-up: ConvMixer `patch_size` > 1, a one-line config change the paper predicts should hurt at 32x32 | - |
-| A-05 | ready-for-review | ML | M-05 | Regularization for ConvMixer: stochastic depth, weight decay, and a capacity cut. Reinstated after the withdrawal below was shown wrong. Write-up in `docs/COMPARISON.md` | - |
+| A-05 | ready-for-review | ML | M-05 | Regularization for ConvMixer: stochastic depth, weight decay, and a capacity cut. Reinstated after the withdrawal below was shown wrong. Write-up in `docs/experiments/A-05-convmixer-regularization.md` | - |
 | A-06 | unclaimed | ML | A-03 | Follow-up: sweep `res_scale` for the unnormalized arm. It was set to EDSR's published 0.1 untuned, and since it both enables training and damps every block it may account for part of A-03's 1.72x gap | - |
 | A-07 | unclaimed | ML | A-03 | Follow-up: pre-activation unnormalized ConvMixer, i.e. `x + s*DW(GELU(x))` so the residual branch ends linear as EDSR's does. Measured at init this removes the DC drift entirely (+0.002 against +0.365 after 16 blocks), so it separates "ConvMixer needs normalization" from "ConvMixer needs mean-centering" -- the more interesting question than A-06 | - |
 | A-08 | unclaimed | ML | A-05 | Follow-up: a long skip from the stem into the decoder projection (+16,384 params, 0.95%). ConvMixer's deficit below 12 h lead time is 0.0341-0.0367 against the U-Net's 0.0178 and is unchanged by weight decay, stochastic depth, *and* a capacity cut alike, so it is structural rather than a regularization failure. This is the one thing the U-Net has that ConvMixer lacks | - |
 
-A-05 evidence (2026-08-14; write-up and both comparison tables in `docs/COMPARISON.md`, figures
+A-05 evidence (2026-08-14; write-up and both comparison tables in `docs/experiments/A-05-convmixer-regularization.md`, figures
 in `viz/compare_architectures.png` and `viz/compare_convmixer_variants.png`). Three arms, each
 varying one factor against the published run. Paired on trajectory, held-out test split,
 negative favours the arm:
@@ -210,7 +210,7 @@ lead time (-21%); the short-lead-time deficit is untouched by all three arms, wh
 exists. The earlier withdrawal of this task was wrong: it read the full run's epoch-8 gap of
 1.79x as representative, but the gap grows to 5.24x by early stopping.
 
-A-03 evidence (2026-08-13, owner-requested; write-up in `docs/ABLATION_NORMALIZATION.md`). Tests
+A-03 evidence (2026-08-13, owner-requested; write-up in `docs/experiments/A-03-convmixer-normalization.md`). Tests
 whether EDSR's no-normalization finding transfers to ConvMixer. It does **not**. Held-out test
 split, paired on trajectory, positive favours BatchNorm:
 
@@ -231,7 +231,7 @@ A-01 evidence (2026-08-13, owner-requested). Both architectures retrained from s
 additive bicubic path removed, on the frozen manifest, frozen seed 20260812, and a schedule
 identical in every value to the frozen runs'. Parameter counts identical between arms, so exactly
 one factor varies. Both new runs pass `scripts/verify_independent.py`. Frozen T-03 artifacts and
-`docs/RESULTS.md` untouched; results in `docs/ABLATION_RESIDUAL.md`.
+`docs/RESULTS.md` untouched; results in `docs/experiments/A-01-residual-vs-direct.md`.
 
 Paired on trajectory, held-out test split, normalized macro MSE (negative favours direct):
 
@@ -257,6 +257,19 @@ One seed per arm; treat as evidence on this split rather than an established pro
 | E-03 | ready-for-review | ML | E-01,E-02 | Evaluate fresh workloads without tuning and create tables/plots | G7 |
 | V-05 | ready-for-review | Verifier | E-03 | Recompute selected metrics and audit leakage, units, aggregation, and claims | G7 |
 | I-03 | signed-off-with-exceptions | Lead | V-05 | Clean-install reproduction, documentation audit, integration and science sign-off | G8 |
+| I-04 | ready-for-review | Lead | I-03 | Generate every documented number from a committed results index, organize documents by lifetime, and fail CI on documentation drift (D024) | - |
+
+I-04 evidence (2026-08-14). `docs/results/runs.yaml` registers all nine evaluated runs;
+`python -m swe_sr.results --write` builds `docs/results/index.json` from their artifacts; eleven
+marker-delimited blocks across `README.md`, `CLAUDE.md`, `docs/README.md`,
+`docs/EXPERIMENT_FREEZE.md`, and the A-05 write-up render from it; `python -m swe_sr.docgen check`
+runs in `scripts/check.sh`. Every converted table reproduced its committed values exactly **except
+the A-05 and A-03 paired intervals**, which were paired t-intervals rather than the percentile
+bootstrap `docs/VALIDATION.md` specifies — 10-20% wider, with every mean difference, verdict, and
+win count unchanged. That defect is the argument for the change and is recorded in D024.
+`README.md` falls from 544 to 150 lines, with the walkthrough in `docs/PIPELINE.md` and the rerun
+in `docs/REPRODUCE.md`; the four experiment write-ups move to `docs/experiments/<ID>-<slug>.md`.
+`./scripts/check.sh` passes: 384 tests, 11 blocks, no lint problems.
 
 G8 evidence, clean-install reproduction (verified from a fresh clone of the repository with
 `--recurse-submodules`, a fresh venv, and `pip install -e ".[dev]"`):
@@ -298,7 +311,8 @@ already found there, and the D018 claim that the specified augmentation is inval
 
 - O-07: **ready-for-review** — cross-resolution transfer, run 2026-08-13 on owner request. Generate
   the 64->256 pair and evaluate the frozen 32->128 checkpoints on it with no retraining (D021,
-  `docs/TRANSFER.md`). Evidence: 12/12 data gates at the new pair; both models still beat bicubic
+  `docs/experiments/O-07-cross-resolution-transfer.md`). Evidence: 12/12 data gates at the new
+  pair; both models still beat bicubic
   but skill falls from 5.2x to 2.4x (EDSR) and 10.7x to 2.2x (U-Net); the ranking inverts, EDSR
   0.0444 against U-Net 0.0497, paired `+0.00533 [+0.00268, +0.00826]` excluding zero with U-Net
   worse on 8 of 8 trajectories; both models lose to bicubic below about 12.7 h, and the exact

@@ -12,7 +12,7 @@
 # parity with the U-Net, not because the reference had it.
 #
 # The hypothesis under test, from the owner and consistent with the r/c decomposition in
-# docs/TRANSFER.md: the additive bicubic path may impose a bias the network then has to fight.
+# docs/experiments/O-07-cross-resolution-transfer.md: the additive bicubic path may impose a bias the network then has to fight.
 # The decomposition measured correction magnitudes up to 9.5x too large at short lead time, which
 # is where an unconditionally-added baseline does the most damage. Whether removing it helps is an
 # empirical question -- the residual form also hands the model a competent starting point worth

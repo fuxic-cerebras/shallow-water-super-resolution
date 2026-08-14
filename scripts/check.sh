@@ -44,6 +44,13 @@ ruff format --check swe_sr tests scripts
 echo "== mypy"
 mypy
 
+# Documentation drift, which no other check here can see. Every results table in the docs is
+# rendered from docs/results/index.json, so a stale number fails the build rather than rotting
+# in place -- the headline 0.0400 had been transcribed into eight files by hand before D024.
+# This reads only the committed index, never runs/, so it works in a clone with no artifacts.
+echo "== documentation blocks and hygiene"
+python -m swe_sr.docgen check
+
 echo "== pytest (fast suite)"
 # `backup` is deselected while the primary 32->128 experiment is the focus: the backup
 # pair is a separate later release that must not delay it (D008). Run `pytest -m backup`

@@ -95,12 +95,19 @@ From `docs/VALIDATION.md`, and unchanged by this freeze:
 
 ## Frozen results — held-out test split (1,576 snapshots, 8 trajectories)
 
+This table is a **verified** block: `python -m swe_sr.docgen check` re-renders it from
+`docs/results/index.json` and fails if it no longer matches, but never rewrites it. Rewriting a
+freeze to agree with whatever the artifacts currently say would destroy the only property it
+exists to provide. A mismatch means a new decision and a new freeze, not an edit here.
+
+<!-- BEGIN verified: results:frozen-test -->
 | Method | Params | normMSE | 95% CI | eta relL2 | u relL2 | v relL2 | mass err |
 |---|---:|---:|---|---:|---:|---:|---:|
 | nearest | 0 | 0.4301 | [0.3076, 0.5435] | 0.6305 | 0.6987 | 0.7044 | 0.0439 |
 | bicubic | 0 | 0.4295 | [0.3069, 0.5431] | 0.6239 | 0.6983 | 0.7021 | 0.0392 |
 | EDSR | 1,517,571 | 0.0830 | [0.0543, 0.1129] | 0.2826 | 0.3168 | 0.3150 | 0.0540 |
 | U-Net | 1,930,208 | **0.0400** | [0.0261, 0.0544] | **0.1951** | **0.2149** | **0.2135** | **0.0347** |
+<!-- END verified: results:frozen-test -->
 
 Paired bootstrap against bicubic, both excluding zero: EDSR `-0.3466 [-0.4334, -0.2514]`,
 U-Net `-0.3895 [-0.4920, -0.2805]`.

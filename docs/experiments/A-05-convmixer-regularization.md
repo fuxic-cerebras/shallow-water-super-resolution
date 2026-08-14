@@ -1,4 +1,4 @@
-# Training-curve and MSE comparison
+# A-05 — ConvMixer regularization, and the training-curve comparison
 
 Companion to the two figures in `viz/`, and the write-up of record for A-05. Every number is
 read from the run artifacts, nothing recomputed:
@@ -28,11 +28,13 @@ scores 0.4295 on the same split and predicting the channel mean scores exactly 1
 U-Net, EDSR, and ConvMixer as published (D023), on the frozen manifest, seed 20260812, and an
 identical 30,000-step schedule.
 
+<!-- BEGIN generated: results:architectures -->
 | model | params | best val | best ep | epochs | final train | gap | test | 95% CI |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| U-Net | 1,930,208 | 0.0398 | 39 | 39 | 0.0145 | 2.73x | **0.0400** | [0.0261, 0.0544] |
+| U-Net | 1,930,208 | **0.0398** | 39 | 39 | 0.0145 | 2.73x | **0.0400** | [0.0261, 0.0544] |
 | ConvMixer | 1,720,067 | 0.0533 | 21 | 36 | 0.0103 | 3.61x | 0.0651 | [0.0366, 0.0963] |
 | EDSR | 1,517,571 | 0.0790 | 34 | 39 | 0.0634 | 1.26x | 0.0830 | [0.0543, 0.1129] |
+<!-- END generated: results:architectures -->
 
 The figure shows what the aggregate hides: **ConvMixer reaches the lowest training loss of the
 three** (0.0103, below the U-Net's 0.0145) and still finishes between them on validation. It is
@@ -41,11 +43,13 @@ is the opposite failure — a 1.26x gap means it never fit the training data at 
 
 Error by lead time, which is where the architectural hypothesis is actually tested:
 
-| model | <= 12 h | 16–24 h | > 24 h |
+<!-- BEGIN generated: results:architectures-lead-time -->
+| model | <= 12 h | 16-24 h | > 24 h |
 |---|---:|---:|---:|
 | U-Net | **0.0178** | 0.0371 | **0.0666** |
 | ConvMixer | 0.0341 | **0.0359** | 0.1245 |
 | EDSR | 0.0765 | 0.0496 | 0.1229 |
+<!-- END generated: results:architectures-lead-time -->
 
 D023 predicted that an isotropic 129 px receptive field would pay off where basin-scale
 structure dominates, and in the 16–24 h band it does: ConvMixer is the best of the three there,
@@ -58,26 +62,38 @@ kernel and patch size alone.
 ## 2. ConvMixer variants — `viz/compare_convmixer_variants.png`
 
 A-05 (regularization) and A-03 (normalization). Each arm varies one factor against the
-published run, except the unnormalized one — see `docs/ABLATION_NORMALIZATION.md` for why that
+published run, except the unnormalized one — see `docs/experiments/A-03-convmixer-normalization.md` for why that
 one cannot.
 
+<!-- BEGIN generated: results:convmixer-variants -->
 | arm | params | best val | best ep | epochs | final train | gap | test | 95% CI |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| + stochastic depth 0.1 | 1,720,067 | 0.0467 | 27 | 39 | 0.0176 | 2.48x | **0.0595** | [0.0329, 0.0888] |
+| + stochastic depth 0.1 | 1,720,067 | **0.0467** | 27 | 39 | 0.0176 | 2.48x | **0.0595** | [0.0329, 0.0888] |
 | 256/12 (depth 16 -> 12) | 1,368,835 | 0.0544 | 36 | 39 | 0.0108 | 5.09x | 0.0633 | [0.0370, 0.0915] |
 | + weight decay 1e-2 | 1,720,067 | 0.0561 | 31 | 39 | 0.0104 | 5.14x | 0.0645 | [0.0370, 0.0939] |
 | published (reference) | 1,720,067 | 0.0533 | 21 | 36 | 0.0103 | 3.61x | 0.0651 | [0.0366, 0.0963] |
 | no normalization (A-03) | 1,703,171 | 0.1180 | 36 | 39 | 0.1082 | 1.10x | 0.1120 | [0.0772, 0.1469] |
+<!-- END generated: results:convmixer-variants -->
 
 Those intervals overlap heavily, because trajectory-to-trajectory spread dominates. The paired
 test is the one that carries the verdict — paired on trajectory, negative favours the arm:
 
+<!-- BEGIN generated: results:convmixer-paired -->
 | arm | paired diff | 95% CI | excludes 0 | arm better on |
 |---|---:|---|---|---|
-| + stochastic depth | **-0.00561** | [-0.00968, -0.00153] | **yes** | 6 of 8 |
-| 256/12 | -0.00179 | [-0.00790, +0.00433] | no | 5 of 8 |
-| + weight decay 1e-2 | -0.00062 | [-0.00370, +0.00245] | no | 2 of 8 |
-| no normalization | +0.04692 | [+0.01308, +0.08075] | yes, *worse* | 1 of 8 |
+| + stochastic depth 0.1 | **-0.00561** | [-0.00873, -0.00247] | **yes** | 6 of 8 |
+| 256/12 (depth 16 -> 12) | -0.00179 | [-0.00713, +0.00180] | no | 5 of 8 |
+| + weight decay 1e-2 | -0.00062 | [-0.00330, +0.00114] | no | 2 of 8 |
+| no normalization (A-03) | +0.04692 | [+0.01895, +0.07052] | yes, *worse* | 1 of 8 |
+<!-- END generated: results:convmixer-paired -->
+
+These intervals are the **percentile bootstrap over trajectories** that `docs/VALIDATION.md`
+specifies, seed 0. They replace the paired t-intervals this table carried until the numbers
+became generated: `mean +/- t_{7,0.975} * SE`, which is symmetric by construction and on these
+eight pairs runs 10-20% wider (stochastic depth read `[-0.00968, -0.00153]`). Every mean
+difference, verdict, and win count is unchanged — the two estimators disagree only on width —
+but only one of them is the protocol the rest of the project uses, and a hand-computed interval
+is exactly what a generated table exists to prevent.
 
 **Only stochastic depth is a resolvable improvement**: 8.6% better, and it fixed the
 overfitting it targeted — the gap falls 3.61x -> 2.48x, now tighter than the U-Net's 2.73x, and
@@ -97,13 +113,15 @@ throughput (40.1 against 24.3 samples/s).
 
 Error by lead time, which is where this gets interesting:
 
-| arm | <= 12 h | 16–24 h | > 24 h |
+<!-- BEGIN generated: results:convmixer-lead-time -->
+| arm | <= 12 h | 16-24 h | > 24 h |
 |---|---:|---:|---:|
-| published | 0.0341 | 0.0359 | 0.1245 |
-| + stochastic depth | 0.0367 | 0.0382 | **0.0984** |
-| 256/12 | 0.0343 | 0.0356 | 0.1199 |
-| + weight decay 1e-2 | 0.0342 | 0.0331 | 0.1253 |
-| no normalization | 0.1258 | 0.0469 | 0.1703 |
+| + stochastic depth 0.1 | 0.0367 | 0.0382 | **0.0984** |
+| 256/12 (depth 16 -> 12) | 0.0343 | 0.0356 | 0.1199 |
+| + weight decay 1e-2 | 0.0342 | **0.0331** | 0.1253 |
+| published | **0.0341** | 0.0359 | 0.1245 |
+| no normalization (A-03) | 0.1258 | 0.0469 | 0.1703 |
+<!-- END generated: results:convmixer-lead-time -->
 
 **The entire stochastic-depth gain is at long lead times** (-21% above 24 h); below 12 h it is
 slightly *worse*. And the short-lead-time deficit against the U-Net's 0.0178 survives all three

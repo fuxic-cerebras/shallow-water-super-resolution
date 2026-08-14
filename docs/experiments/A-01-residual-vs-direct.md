@@ -1,4 +1,4 @@
-# Ablation — outer bicubic residual against direct prediction (D022)
+# A-01 — Outer bicubic residual against direct prediction (D022)
 
 Run 2026-08-13 on owner request. Ablation 3 of `docs/EXPERIMENT_PLAN.md`. Both architectures were
 retrained from scratch with the additive bicubic path removed, on the frozen manifest, the frozen
@@ -16,7 +16,7 @@ with the additive path, zeroed weights reproduce the bicubic baseline exactly, s
 bicubic is attributable to the learned residual. The other — that it eases optimization — had never
 been tested against a control. The specific hypothesis under test, from the owner, is that the
 additive path imposes a bias the network then has to fight, which the `r`/`c` decomposition in
-`docs/TRANSFER.md` made plausible by measuring correction magnitudes up to 9.5x too large at short
+`docs/experiments/O-07-cross-resolution-transfer.md` made plausible by measuring correction magnitudes up to 9.5x too large at short
 lead time.
 
 ## What was held fixed
@@ -106,7 +106,7 @@ four runs loses to bicubic's 0.0090: EDSR 6.2x (residual) and 6.5x (direct), U-N
 Removing the additive baseline does not fix it. That points the finger back at the objective —
 equal-weight MSE averaged over a mixture of a well-posed and a partly unpredictable regime, with no
 lead-time conditioning — rather than at the residual formulation. It also removes one candidate
-explanation for the `docs/TRANSFER.md` over-correction finding.
+explanation for the `docs/experiments/O-07-cross-resolution-transfer.md` over-correction finding.
 
 The two architectures cross over at very different lead times, and the difference is large enough
 that they should not be described together. **EDSR** is still behind bicubic at 4.69 h (2.0x, both
@@ -154,7 +154,7 @@ architecture-level choice, which strengthens the reading that it is a property o
   unaffected: training is seeded and deterministic given the config.
 - Fresh workloads (`fresh_id`, `ring_ood`) and the 64→256 transfer test were **not** re-run for the
   direct arms. Whether direct prediction transfers better out of distribution is open, and it is a
-  natural next step given that `docs/TRANSFER.md` found the over-correction largest there.
+  natural next step given that `docs/experiments/O-07-cross-resolution-transfer.md` found the over-correction largest there.
 
 ## Reproducing
 

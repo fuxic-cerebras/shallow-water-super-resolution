@@ -1,7 +1,7 @@
 """Figures for the cross-resolution transfer experiment (64->256 tested with 32->128 models).
 
 Two figures, from the stored artifacts only -- no inference here, so these are exactly the
-numbers `docs/TRANSFER.md` quotes:
+numbers `docs/experiments/O-07-cross-resolution-transfer.md` quotes:
 
   * `transfer_leadtime.png` -- normalized macro MSE against lead time, one panel per pair, same
     y-axis so the two are directly comparable. The point of the figure is the *crossover*: both

@@ -1,0 +1,116 @@
+# Registry of every run the documentation cites, and the ONLY place a run ID is written by
+# hand (D024). `python -m swe_sr.results --write` reads this, loads each run's
+# `evaluation_*.json`, and writes `docs/results/index.json`; `python -m swe_sr.docgen` renders
+# the documentation's tables from that index. Prose therefore never transcribes a number.
+#
+# `swe_sr/docgen.py` also fails if any document mentions a run ID absent from this file, so a
+# run cannot be cited without being registered.
+#
+# Fields
+#   id          index key, and the name block renderers use. Stable; not the model name, which
+#               is not unique -- the weight-decay arm's model is `convmixer`, same as the
+#               published arm it varies.
+#   label       display name in rendered tables.
+#   short       display name where the table is already about architectures and the "x4" is
+#               redundant, as in the training-curve comparison. Defaults to `label`.
+#   run_id      directory under runs/. Gitignored, so the artifacts are not in the repository;
+#               the index built from them is.
+#   role        primary | ablation | variant. `primary` arms appear in the headline table.
+#   experiment  the TASKS.md task or decision this run belongs to.
+#   frozen      true if `docs/EXPERIMENT_FREEZE.md` designates it. Frozen arms' rendered tables
+#               are verified, never rewritten.
+#   reference   the arm this one varies against, for the paired comparison. Omit for primaries.
+schema: 1
+
+arms:
+  - id: unet
+    label: U-Net x4
+    short: U-Net
+    run_id: 20260812T235727Z_unet_e3ce47d7_da865691
+    role: primary
+    experiment: T-03
+    frozen: true
+    note: Residual U-Net, the frozen primary comparison arm (D020).
+
+  - id: edsr
+    label: EDSR x4
+    short: EDSR
+    run_id: 20260812T230157Z_edsr_aae64836_077d6b53
+    role: primary
+    experiment: T-03
+    frozen: true
+    note: EDSR, the frozen primary comparison arm (D020).
+
+  - id: convmixer
+    label: ConvMixer x4
+    short: ConvMixer
+    run_id: 20260813T232258Z_convmixer_473b97bc_116ef1a8
+    role: primary
+    experiment: D023
+    note: >
+      ConvMixer as published, added as a third architecture after the T-03 freeze. Same
+      manifest, seed, and 30,000-step schedule; outside the freeze itself.
+
+  - id: convmixer_droppath
+    label: + stochastic depth 0.1
+    run_id: 20260814T054717Z_convmixer_droppath_5caf16d9_26ddb98b
+    role: variant
+    experiment: A-05
+    reference: convmixer
+
+  - id: convmixer_d12
+    label: 256/12 (depth 16 -> 12)
+    run_id: 20260814T054726Z_convmixer_d12_1fe49d5a_26ddb98b
+    role: variant
+    experiment: A-05
+    reference: convmixer
+
+  - id: convmixer_wd
+    label: + weight decay 1e-2
+    run_id: 20260814T054723Z_convmixer_338c8403_26ddb98b
+    role: variant
+    experiment: A-05
+    reference: convmixer
+    note: >
+      Model config is `convmixer_x4.yaml`; only the experiment config differs
+      (`configs/experiment/full_wd.yaml`), so its `model` field is `convmixer` like the
+      published arm. The registry id, not the model name, distinguishes them.
+
+  - id: convmixer_nonorm
+    label: no normalization (A-03)
+    run_id: 20260814T001237Z_convmixer_nonorm_d8cbb386_116ef1a8
+    role: variant
+    experiment: A-03
+    reference: convmixer
+    note: >
+      Cannot vary one factor alone -- removing BatchNorm requires other changes to train at
+      all. See the A-03 write-up.
+
+  - id: edsr_direct
+    label: EDSR, direct
+    run_id: 20260813T191354Z_edsr_direct_c0b760ce_8dc7367c
+    role: ablation
+    experiment: D022
+    reference: edsr
+
+  - id: unet_direct
+    label: U-Net, direct
+    run_id: 20260813T191403Z_unet_direct_209183b2_8dc7367c
+    role: ablation
+    experiment: D022
+    reference: unet
+
+# Lead-time bands used by the rendered by-band tables. Defined here rather than in the
+# renderer so a change to a band boundary is a reviewable diff next to the runs it regroups.
+#
+# Intervals are half-open, `min <= t < max`, with `min` defaulting to 0 and `max` to infinity.
+# The bands deliberately do not partition the range -- 12 to 16 h is omitted, as the existing
+# tables omit it, because the bands are there to separate three regimes rather than to sum.
+# `swe_sr/results.py` asserts that no snapshot's lead time falls exactly on a boundary, so the
+# labels below ("<= 12 h" for a `t < 12` interval) describe the same set of snapshots either
+# way; if a future grid puts a snapshot on 12.0 or 24.0 h, that assertion fails rather than
+# silently moving it between bands.
+lead_time_bands:
+  - {label: "<= 12 h", max: 12.0}
+  - {label: "16-24 h", min: 16.0, max: 24.0}
+  - {label: "> 24 h", min: 24.0}

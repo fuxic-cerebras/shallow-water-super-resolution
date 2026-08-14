@@ -7,16 +7,21 @@ target.
 
 ## Read first
 
-Before changing code, read these files in order:
+Before changing code, read these files in order. This list is generated from `docs/index.yaml`
+(D024) — it used to be a second hand-maintained copy of `README.md`'s, and the two had drifted.
 
-1. `docs/PROJECT_SPEC.md`
-2. `docs/DATASET.md`
-3. `docs/ARCHITECTURE.md`
-4. `docs/EXPERIMENT_PLAN.md`
-5. `docs/VALIDATION.md`
-6. `docs/AGENT_WORKFLOW.md`
-7. `docs/RESEARCH_MATRIX.md`
-8. `TASKS.md`
+<!-- BEGIN generated: docs:reading-order -->
+1. `docs/PROJECT_SPEC.md` — goal, scope, research questions, definition of done, open questions
+2. `docs/DATASET.md` — resolution pairs, IC family, splits, normalization, storage contract
+3. `docs/ARCHITECTURE.md` — repository layout, batch contract, the three model designs, run directory
+4. `docs/EXPERIMENT_PLAN.md` — baselines, loss, optimizer schedule, staged runs, artifacts
+5. `docs/VALIDATION.md` — data gates, metric definitions, aggregation protocol, negative tests
+6. `TASKS.md` — task status and per-gate evidence
+7. `docs/README.md` — the full index, including every experiment write-up
+<!-- END generated: docs:reading-order -->
+
+Then `docs/AGENT_WORKFLOW.md` for the team and gates, and `docs/RESEARCH_MATRIX.md` for what each
+design choice was taken from.
 
 `references/shallow-water/MODEL_NOTES.md` is the source of truth for the existing
 solver's equations and discretization. It lives in a submodule pinned at commit

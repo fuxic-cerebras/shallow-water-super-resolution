@@ -1,4 +1,4 @@
-# Cross-Resolution Transfer — 32→128 models tested on 64→256
+# O-07 — Cross-resolution transfer: 32→128 models tested on 64→256
 
 Run 2026-08-13 on owner request (O-07). The two frozen T-03 checkpoints were evaluated, without
 any retraining or tuning, on a **newly generated 64→256 paired dataset**. Nothing was trained on

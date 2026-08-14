@@ -39,18 +39,19 @@ def _fresh(run_dir: Path, scenario: str) -> dict[str, Any] | None:
 
 
 def _frozen_run_ids() -> set[str]:
-    """Run IDs designated as the frozen experiment by docs/EXPERIMENT_FREEZE.md.
+    """Run IDs designated as the frozen experiment, read from `docs/results/runs.yaml`.
 
-    Read from the freeze record rather than from a run's own stage label, because the two frozen
-    runs were launched as diagnostics and their artifacts are deliberately not rewritten. The
-    freeze file is the single place that designation lives.
+    Frozen-ness comes from the registry rather than from a run's own stage label, because the two
+    frozen runs were launched as diagnostics and their artifacts are deliberately not rewritten.
+
+    This used to regex run IDs out of `docs/EXPERIMENT_FREEZE.md`, which made a prose file load
+    bearing: reformatting a table could silently change which runs the report called frozen, and
+    the pattern `_[a-z]+_` had already stopped matching model names with an underscore
+    (`edsr_direct`). The registry states the designation as data (D024).
     """
-    path = Path(__file__).resolve().parents[1] / "docs" / "EXPERIMENT_FREEZE.md"
-    if not path.is_file():
-        return set()
-    import re
+    from swe_sr.results import frozen_run_ids
 
-    return set(re.findall(r"`(\d{8}T\d{6}Z_[a-z]+_[0-9a-f]{8}_[0-9a-f]{8})`", path.read_text()))
+    return frozen_run_ids()
 
 
 def _row(name: str, method: dict[str, Any]) -> str:
