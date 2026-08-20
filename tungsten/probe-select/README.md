@@ -1,28 +1,76 @@
 # Minimal repro: predicated `sp` select miscompiles on `arch=sdr`
 
-This is the evidence for the branch-free flux split in `../swe.w`. Keeping it runnable
-matters because the parent README makes a strong claim about a compiler defect, and that
-claim is load-bearing: it is the reason the kernel contains no conditionals.
+Evidence for the branch-free flux split in `../swe32/swe.w`. Keeping it runnable matters
+because that design choice rests on this defect being real.
 
-## What it shows
+## The bug
 
-A single tile, no sockets, eight `sp` inputs spanning `-2.7e-4 .. 100`, and two ways of
-computing `v * (v > 0 ? A : B)`:
+A bare `if` (no `else`) that conditionally overwrites a variable **silently does nothing**
+when that variable's current value is a plain **copy** of another variable:
 
-| Form | Result |
-|---|---|
-| `sp h; h <- B; if (v > 0.0:sp) { h <- A; }` then `v * h` | **wrong on exactly the 4 inputs where `v > 0`** |
-| `max(v,0)*A + min(v,0)*B` | correct on 7/8; differs only at `-0.0`, where it gives `+0.0` rather than `-0.0` |
+```tungsten
+sp h;
+h <- bv;                        // plain copy
+if (v > 0.0:sp) { h <- av; }    // never takes effect
+```
 
-The `if` body never executes. The listing shows the tell -- a `select32` whose two source
-registers are the same:
+Register allocation coalesces the destination with the copy source, so the emitted
+predicated select ends up with identical source registers and becomes a no-op:
 
 ```
 flteqs P0 = D0, 0x4;   P0? select32 D0 = D0, D0, P0;
 ```
 
-A **literal** right-hand side (`h <- 1.0:sp`) does work, which is why a first version of the
-kernel had correct wall masks and silently wrong upwind face heights.
+The compare is emitted correctly. It is the select that is degenerate, which is why the
+failure is silent: no diagnostic, no crash, just the fall-through value every time.
+
+## What triggers it, measured
+
+`make TEST=probe MODE=sim` checks all six forms against the expected result. Condition
+values span `-2.7e-4 .. 100` including both signed zeros; `av`/`bv` are loaded via `miset`
+so nothing can be constant-folded.
+
+| Form | Result |
+|---|---|
+| default = **copy**, branch = literal | **wrong** on every input where the condition holds |
+| default = **copy**, branch = variable | **wrong** on every input where the condition holds |
+| default = literal, branch = variable | ok |
+| default = expression (`bv + zero`), branch = literal | ok |
+| `if/else`, both variables | ok |
+| ternary `?:`, both variables | ok |
+
+So it is not about the operand kinds as such, and not about the comparison: `>`, `<` with
+swapped operands, `>=`, comparing against a variable zero, and negating the value all fail
+identically. What matters is whether the fall-through value is a coalescible copy. A
+literal or an expression result occupies its own register and the select behaves; adding
+`+ 0.0` to the default is enough to make the same code correct.
+
+## Why it cost real time
+
+In `../swe32/swe.w` the same construct appeared twice. The wall mask,
+
+```tungsten
+un2 <- (un - bc * uu + al * vv) * ib;   // expression -> own register
+if (mu < 0.5:sp) { un2 <- 0.0:sp; }     // worked
+```
+
+was fine, because `un2` held an expression result. The upwind face heights,
+
+```tungsten
+hn <- eNc;                              // plain copy -> coalesced
+if (vn2 > 0.0:sp) { hn <- ec; }         // silently skipped
+```
+
+were not. The result was a 7e-9 discrepancy in `eta` confined to two walls -- small enough
+to look like a rounding question rather than a wrong branch.
+
+## Workarounds
+
+`if/else` and the ternary both work and are the obvious fixes. `../swe32/swe.w` instead
+drops predication altogether, using `max(u,0)*h_here + min(u,0)*h_downwind`, because the
+trigger depends on a register-allocation decision rather than on anything visible in the
+source -- the same statement is correct or incorrect depending on how the value it
+overwrites happened to be produced.
 
 ## Run
 
@@ -30,6 +78,5 @@ kernel had correct wall masks and silently wrong upwind face heights.
 make TEST=probe MODE=sim
 ```
 
-The last two lines of output are the verdict per form. Note the test PASSes either way --
-it prints a comparison rather than asserting, because the point is to observe the
-difference, not to gate on it.
+The test PASSes as long as the observed behaviour still matches the table above, and says
+so explicitly if it has changed -- so if a compiler fix lands, this reports it.

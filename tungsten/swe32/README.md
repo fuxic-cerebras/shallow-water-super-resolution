@@ -190,43 +190,45 @@ here every constant depends on the grid size anyway, and loading them means the 
 
 ### Predicated `sp` selects miscompile on `arch=sdr`
 
-The natural way to write the upwind face height is
+A bare `if` (no `else`) that conditionally overwrites a variable **silently does nothing**
+when that variable's current value is a plain **copy** of another variable:
 
 ```tungsten
-sp h;  h <- downwind;  if (u > 0.0:sp) { h <- upwind; }
+sp hn;
+hn <- eNc;                            // plain copy
+if (vn2 > 0.0:sp) { hn <- ec; }       // never takes effect
 ```
 
-**This silently produces the wrong answer** when both branches are variables: the body never
-executes, so every upwind cell takes the downwind value. It survived three runs of this
-kernel looking like a 7e-9 discrepancy in `eta` confined to two walls.
-
-Minimal reproduction -- a single-tile kernel, no sockets, `N=8` inputs spanning
-`-2.7e-4 .. 100`:
-
-```tungsten
-sp h; h <- B; if (v > 0.0:sp) { h <- A; }   r[i] <- v * h;
-```
-
-is wrong on exactly the four inputs where `v > 0`. The listing shows the tell:
+Register allocation coalesces the destination with the copy source, so the predicated
+select is emitted with identical source registers and becomes a no-op:
 
 ```
 flteqs P0 = D0, 0x4;   P0? select32 D0 = D0, D0, P0;
 ```
 
-a `select32` whose two source registers are identical. A **literal** right-hand side
-(`h <- 1.0:sp`) does work, which is why the wall masks were fine while the face heights
-were not.
+The compare is correct; the select is degenerate. No diagnostic, no crash -- just the
+fall-through value every time. Here that meant every upwind cell taking the downwind
+height, presenting as a 7e-9 discrepancy in `eta` confined to two walls.
 
-The kernel therefore contains no conditionals at all. The upwind flux is written as a
-branch-free flux split:
+The trigger is the coalescible copy, not the operand kinds and not the comparison. A
+literal or an expression default occupies its own register and works; `>`, `<` with swapped
+operands, `>=`, and comparing against a variable zero all fail identically. This is also
+why the same construct was correct for the wall masks, where `un2` holds an expression
+result, and wrong for the face heights, where `hn` was a copy. `../probe-select/` measures
+the full matrix.
+
+`if/else` and the ternary `?:` both work and are the straightforward fixes. This kernel
+instead drops predication entirely, using the branch-free flux split
 
 ```
 u * h_upwind  ==  max(u,0) * h_here + min(u,0) * h_downwind
 ```
 
-which is algebraically identical to `swe.py`'s `where(u > 0, ...)` form -- one term is
-always a zero product -- and reproduces the strict `> 0` test, since at `u == 0` both terms
-vanish. The walls use `un2 * mu + 0.0` for the same reason.
+which is algebraically identical to `swe.py`'s `where(u > 0, ...)` -- one term is always a
+zero product -- and reproduces the strict `> 0` test, since at `u == 0` both terms vanish.
+The reason for going further than `if/else` is that the trigger depends on a
+register-allocation decision rather than anything visible in the source: the same statement
+is correct or incorrect depending on how the value it overwrites happened to be produced.
 
 ### Fused multiply-add, and the sign of zero
 

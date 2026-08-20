@@ -1,20 +1,32 @@
 import numpy as np
 
 x = np.fromfile("in-x.bin", "<f4")
-names = ["r_max", "r_min", "r_split", "r_where"]
-o = {n: np.fromfile(f"out-{n}.bin", "<f4") for n in names}
-A, B = np.float32(10.0), np.float32(20.0)
-print(f"{'x':>12} {'max':>10} {'min':>10} {'split':>12} {'where':>12} {'want':>12}")
-bad_split = bad_where = 0
-for k, v in enumerate(x):
-    want = np.float32(v * (A if v > 0 else B))
-    s, w = o["r_split"][k], o["r_where"][k]
-    bad_split += s.view(np.uint32) != want.view(np.uint32)
-    bad_where += w.view(np.uint32) != want.view(np.uint32)
-    print(
-        f"{v:>12.3e} {o['r_max'][k]:>10.3e} {o['r_min'][k]:>10.3e} "
-        f"{s:>12.5e} {w:>12.5e} {want:>12.5e}"
-        f"  {'split*' if s != want else ''}{'where*' if w != want else ''}"
-    )
-print(f"\n  split (branch-free): {'OK' if bad_split == 0 else f'WRONG on {bad_split}/8'}")
-print(f"  where (predicated) : {'OK' if bad_where == 0 else f'WRONG on {bad_where}/8'}")
+a = np.fromfile("in-a.bin", "<f4")
+b = np.fromfile("in-b.bin", "<f4")
+one, two = np.float32(1.0), np.float32(2.0)
+
+CASES = (
+    ("k_copy_lit", one, b, "default=copy       branch=literal ", "WRONG"),
+    ("k_copy_var", a, b, "default=copy       branch=variable", "WRONG"),
+    ("k_lit_var", a, np.full_like(b, two), "default=literal    branch=variable", "ok"),
+    ("k_expr_lit", one, b, "default=expression branch=literal ", "ok"),
+    ("k_ifelse", a, b, "if/else            both variables ", "ok"),
+    ("k_ternary", a, b, "ternary ?:         both variables ", "ok"),
+)
+
+print(f"  {'form':36s} {'expected':9s} {'actual':9s}")
+failures = 0
+for key, true_branch, false_branch, label, expected in CASES:
+    got = np.fromfile(f"out-{key}.bin", "<f4")
+    want = np.where(x > 0, true_branch, false_branch)
+    bad = int((got != want).sum())
+    actual = "ok" if bad == 0 else f"WRONG {bad}/8"
+    agrees = (expected == "ok") == (bad == 0)
+    failures += not agrees
+    print(f"  {label:36s} {expected:9s} {actual:9s}{'' if agrees else '   <-- changed!'}")
+
+print()
+if failures:
+    print(f"  {failures} case(s) no longer match the documented behaviour.")
+else:
+    print("  Behaviour matches the characterization in README.md.")

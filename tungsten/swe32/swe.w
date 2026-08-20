@@ -164,14 +164,18 @@ sp probe_fe[n=1]; sp probe_fw[n=1]; sp probe_fn[n=1]; sp probe_fs[n=1];
         //
         // This is not a stylistic preference. The predicated form --
         //     sp h; h <- downwind;  if (u > 0.0:sp) { h <- upwind; }
-        // -- MISCOMPILES on arch=sdr whenever both branches are variables: the body never
-        // executes, so every upwind cell silently takes the downwind value. It cost the
-        // first two runs of this kernel, presenting as a 7e-9 discrepancy in eta
-        // confined to two walls. The listing shows the tell:
+        // -- MISCOMPILES on arch=sdr: `h <- downwind` is a plain copy, register allocation
+        // coalesces h with its source, and the predicated select is emitted with identical
+        // source registers, so the body never executes and every upwind cell silently takes
+        // the downwind value. The listing shows the tell:
         //     flteqs P0 = D0, 0x4;  P0? select32 D0 = D0, D0, P0;
-        // a select whose two source registers are the same. A literal right-hand side
-        // (`h <- 1.0:sp`) does work, but this kernel avoids predication altogether rather
-        // than rely on that distinction holding.
+        // It cost the first two runs of this kernel, presenting as a 7e-9 discrepancy in
+        // eta confined to two walls -- and it is why the wall masks above were fine while
+        // these were not: un2 holds an expression result, not a copy.
+        //
+        // if/else and the ternary both work. This avoids predication entirely anyway,
+        // because the trigger is a register-allocation decision rather than anything
+        // visible in the source. See ../probe-select/ for the measured matrix.
         sp uep; sp uen; sp uwp; sp uwn;
         sp vnp; sp vnn; sp vsp; sp vsn;
         uep <- max(un2,   0.0:sp);  uen <- min(un2,   0.0:sp);

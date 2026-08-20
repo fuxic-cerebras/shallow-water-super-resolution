@@ -14,11 +14,13 @@ PIPELINEFLAGS = arch=${ARCH}
 all : check
 bench.img : bench.obj in-x.bin
 	cp $< $@
-	miset image=$@ out=$@ map=bench.map symbol=t.x order="n _word" data=in-x.bin
+	@set -e; for s in x a b; do \
+	  miset image=$@ out=$@ map=bench.map symbol=t.$$s order="n _word" data=in-$$s.bin; \
+	done
 in-x.bin :
 	python3 ../mk.py
 test : bench-$(MODE).core
-	@for r in r_max r_min r_split r_where; do \
+	@for r in k_copy_lit k_copy_var k_lit_var k_expr_lit k_ifelse k_ternary; do \
 	  miget image=$< map=bench.map symbol=t.$$r order="n _word" data=out-$$r.bin; done
 	python3 ../rd.py
 clean : cleanup
