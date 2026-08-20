@@ -1,0 +1,19 @@
+# Build directories and binaries produced by `make`. Scoped to this directory on purpose:
+# the repository root .gitignore carries a warning about an unanchored pattern that once
+# swallowed swe_sr/data/ and hid a third of the tree from ruff.
+test-*/
+status/
+*.bin
+*.core
+*.elf
+*.elf-core
+*.img
+*.obj
+*.map
+*.note
+*.entry
+*.ps
+*.log
+*.json
+*.stamp
+*.time

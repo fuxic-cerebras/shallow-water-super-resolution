@@ -1,0 +1,68 @@
+(* bench.paint -- shallow-water solver on an NX x NY grid, one PE per grid cell.
+ *
+ * Routing, colorpair setup, and the beach/shore/interior decomposition are taken from
+ * tutorial 27-wave-equation unchanged; only the interior `code()` line and the parameter
+ * list differ. The colorpair mechanism is what makes this size-independent: one set of
+ * routing rules serves every tile, so NX=8 and NX=32 are a test.rc edit, not a rewrite.
+ *
+ * Socket -> direction, which the kernel's correctness depends on:
+ *
+ *   a  sends RIGHT (+x, via a' [CXR]), receives FROM LEFT  (-x, via a [LXC])
+ *   b  sends LEFT  (-x, via b' [CXL]), receives FROM RIGHT (+x, via b [RXC])
+ *   c  sends UP    (+y, via c' [CXU]), receives FROM BELOW (-y, via c [DXC])
+ *   d  sends DOWN  (-y, via d' [CXD]), receives FROM ABOVE (+y, via d [UXC])
+ *
+ * Fabric x is swe.py's first index i; fabric y is its second index j. At NX=NY=32 this
+ * places 34 x 34 = 1156 tiles: 1024 interior, 128 shore edges, 4 idle corners.
+ *)
+
+(* --- 8 colors: 4 data + 4 primed swap partners --- *)
+let a  = color()    (* recv from left  *)
+let ap = color()    (* send right      *)
+let b  = color()    (* recv from right *)
+let bp = color()    (* send left       *)
+let c  = color()    (* recv from below *)
+let cp = color()    (* send up         *)
+let d  = color()    (* recv from above *)
+let dp = color()    (* send down       *)
+
+
+(* --- Uniform routing across the whole rect, interior and shore alike --- *)
+
+let beach = rect(0 0 NX+2 NY+2)
+
+beach : paint(ap [CXR|R])     (* send right, suppressed on the rightmost column *)
+beach : paint(bp [CXL|L])
+beach : paint(cp [CXU|U])
+beach : paint(dp [CXD|D])
+
+beach : paint(a  [L|LXC])     (* recv from left, suppressed on the leftmost column *)
+beach : paint(b  [R|RXC])
+beach : paint(c  [D|DXC])
+beach : paint(d  [U|UXC])
+
+beach : colorpair(a ap)
+beach : colorpair(b bp)
+beach : colorpair(c cp)
+beach : colorpair(d dp)
+
+
+(* --- Shore: the closed-basin wall, replying 0 (see moat.w) --- *)
+
+let shore = union( rect(0      0      NX+2 1)
+                   rect(0      NY+1   NX+2 1)
+                   rect(0      1      1    NY)
+                   rect(NX+1   1      1    NY) )
+shore : code('moat [a:a b:b c:c d:d])
+
+
+(* --- Interior: the NX x NY solver cells --- *)
+(* `name('grid)` must come after `code()`, and is what gives miset/miget the `grid.<sym>`
+ * symbol paths. *)
+
+let interior = rect(1 1 NX NY)
+interior : code('swe [a:a b:b c:c d:d NSTEP:NSTEP])
+interior : name('grid)
+
+
+union(beach interior shore)

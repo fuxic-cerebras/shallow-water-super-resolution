@@ -1,0 +1,15 @@
+test-*/
+status/
+*.bin
+*.core
+*.elf
+*.elf-core
+*.img
+*.obj
+*.map
+*.note
+*.entry
+*.ps
+*.log
+*.json
+*.time

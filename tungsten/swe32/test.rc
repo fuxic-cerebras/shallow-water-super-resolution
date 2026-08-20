@@ -1,0 +1,7 @@
+smoke  NX=4  NY=4  NSTEP=1    ARCH=sdr
+two    NX=4  NY=4  NSTEP=2    ARCH=sdr
+odd    NX=5  NY=5  NSTEP=3    ARCH=sdr
+rect   NX=6  NY=4  NSTEP=3    ARCH=sdr
+n8     NX=8  NY=8  NSTEP=50   ARCH=sdr
+n32    NX=32 NY=32 NSTEP=50   ARCH=sdr
+full   NX=32 NY=32 NSTEP=4999 ARCH=sdr

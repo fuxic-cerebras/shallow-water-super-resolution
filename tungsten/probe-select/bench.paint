@@ -1,0 +1,4 @@
+let t = tile()
+t : code('cmp [N:N])
+t : name('t)
+t
