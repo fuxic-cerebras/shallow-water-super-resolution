@@ -84,6 +84,7 @@ purely the core count -- see the `cbrun` note above.
 | `bench.paint` | Layout and colorpair routing; tutorial 27's, unchanged |
 | `mirror.py` | Op-for-op float32 mirror of `swe.w` -- the exact oracle |
 | `check.py` | Both comparison tiers plus the mass invariant; the gate |
+| `trajectory.py` | Records a whole trajectory by checkpoint-restart, for the animations |
 | `Makefile`, `test.rc` | Build, run, and the validation ladder |
 
 The pure-Python half of the check is `tests/tungsten/test_mirror_parity.py`, which needs no
@@ -128,6 +129,45 @@ cbrun -t rocky -- srun -c 12 make TEST=full MODE=sim CYCLES=3000000 THREADS=12
 
 For reference, the 32x32 50-step rung managed 356 cycles/s with 8 threads on a contended
 2-core VM -- which puts the 4999-step trajectory at over an hour. Ask for the cores.
+
+### Animating the trajectory
+
+`check.py` compares one *final* state, because that is all `miget` can see: `swe.w` writes
+`eta`, `u` and `v` back after its `j in [0, NSTEP)` loop and the core dump holds only that.
+`trajectory.py` gets the intermediate states by paying for them once -- it paints at
+`NSTEP = --stride` and then `miset`s each run's output back in as the next run's initial
+condition:
+
+```bash
+cbrun -t rocky -- srun -c 12 python3 trajectory.py --frames 100 --stride 50 --threads 12
+python ../../scripts/visualize_tungsten.py --all      # from the repo root
+```
+
+The restart is exact rather than an approximation, and cheap: the scheme is a one-step
+recurrence whose entire state is `(eta, u, v)`, every constant is recomputed by `init.py`
+at load time, and the probe taps are write-only -- so `--frames F --stride S` costs the same
+`F*S` kernel steps one uninterrupted run of `F*S` steps would. It is also *checked* rather
+than argued: `mirror.py` is advanced continuously, one step at a time, and every frame is
+compared bit-for-bit, so a restart that dropped or repeated a step would fail at frame 1.
+
+At the same 32x32 horizon as the `full` rung, **all 101 frames are bit-exact** against the
+mirror -- `max|kernel - mirror| = 0` in `eta`, `u` and `v`, against a float32 ULP of 1.5e-08
+at this field magnitude -- and every frame reports clean router state and zero orphans.
+
+| Frames | Stride | Steps | Horizon | Wall (12 cores) | Result |
+|---:|---:|---:|---:|---:|---|
+| 100 | 50 | 5000 | 143.0 h | 22.8 min, 13.7 s/frame | 101/101 exact |
+
+Painting happens once, so the per-frame overhead is only `miset`/`mielf`/`elfmi`/`miget`
+around a 61 MB core dump. It is small: the last frame's log reports simfabric itself at
+11.05 s for 17,831 cycles (1613 cyc/s, the same rate the `n32` rung measured), against 13.7 s
+of wall clock -- about 2.2 s of image plumbing per frame. End to end that is 22.8 min against
+the single `full` run's 19 min, a 20% surcharge for 100 usable states instead of one.
+
+`scripts/visualize_tungsten.py` renders them through the reference repo's own `viz_tools.py`.
+Its difference panel is scaled to one float32 ULP rather than autoscaled -- with a bit-exact
+kernel the data are identically zero, and an autoscale would turn roundoff-free agreement
+into a full-contrast image of nothing.
 
 ## Design
 

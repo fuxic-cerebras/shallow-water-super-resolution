@@ -32,13 +32,15 @@ from swe_config import Config  # noqa: E402
 FIELDS = ("eta", "u", "v")
 
 
-def read_sim(name: str, n_x: int, n_y: int) -> np.ndarray:
+def read_sim(name: str, n_x: int, n_y: int, directory: Path | None = None) -> np.ndarray:
     """Read a `miget` dump back into swe.py's `[x, y]` order.
 
     The file is y-outer/x-inner because that is what `order="y x _word"` writes, so the
-    transpose here is the exact inverse of init.py's.
+    transpose here is the exact inverse of init.py's. `directory` defaults to the working
+    directory, which is the build directory when the Makefile runs the gate; `trajectory.py`
+    passes it explicitly rather than keeping a second copy of this axis contract.
     """
-    path = Path(f"sim-{name}.bin")
+    path = (directory or Path()) / f"sim-{name}.bin"
     raw = np.fromfile(path, dtype="<f4")
     if raw.size != n_x * n_y:
         raise SystemExit(f"{path}: {raw.size} floats, expected {n_x * n_y}")
